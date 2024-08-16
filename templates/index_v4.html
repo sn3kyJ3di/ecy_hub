@@ -23,7 +23,7 @@ html, body {
   color: white;
   padding: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-  z-index: 1000; /* Ensure the banner has a lower z-index than the side panel */
+  z-index: 1000;
   text-align: center;
 }
 
@@ -50,10 +50,10 @@ html, body {
 
 svg {
   position: absolute;
-  top: 80px; /* Match this to the banner's height */
+  top: 80px;
   left: 0;
   width: 100%;
-  height: calc(100% - 80px); /* Adjust the height to fit within the viewport */
+  height: calc(100% - 80px);
 }
 
 .node circle {
@@ -129,7 +129,7 @@ text {
   width: 30px;
   height: 30px;
   margin-right: 10px;
-  border-radius: 50%; /* Add this line to make the squares circular */
+  border-radius: 50%;
 }
 
 .legend-item input[type="checkbox"] {
@@ -147,7 +147,7 @@ text {
 }
 
 .legend-item:first-child {
-  padding-left: 28px; /* Add left padding to the first legend item (ECLYPSE) */
+  padding-left: 28px;
 }
 
 .group-circle {
@@ -161,16 +161,16 @@ text {
   position: fixed;
   top: 0;
   left: 0;
-  width: 400px; /* Set a fixed width for the side panel */
+  width: 400px;
   height: 100%;
   background: rgba(51, 51, 51, 0.9);
   color: white;
-  padding: 20px 40px 20px 20px; /* Add padding on the right side */
+  padding: 20px 40px 20px 20px;
   box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
   transition: transform 0.3s ease-out;
   transform: translateX(-100%);
   z-index: 1000;
-  overflow-y: auto; /* Enable vertical scrolling if content exceeds the panel height */
+  overflow-y: auto;
 }
 
 .side-panel.show {
@@ -462,7 +462,6 @@ text {
   </div>
   <button class="side-panel-toggle" id="toggle-side-panel"></button>
 </div>
-
 <div class="node-tooltip"></div>
 <script>
   var width = window.innerWidth,
@@ -496,8 +495,6 @@ text {
       .alpha(0.8) // Set a lower initial alpha value
       .alphaDecay(0.03) // Set a lower alpha decay rate
       .velocityDecay(0.8); // Set a higher velocity decay rate
-
-
 
   const rightPanel = document.getElementById("right-panel");
   const toggleButton = document.getElementById("toggle-right-panel");
