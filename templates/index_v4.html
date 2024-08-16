@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ECY Hub</title>
+  <style>
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  color: white;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.top-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(51, 51, 51, 0.9);
+  color: white;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  z-index: 1000; /* Ensure the banner has a lower z-index than the side panel */
+  text-align: center;
+}
+
+.top-banner h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.top-banner h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(rgba(26, 26, 63, .8), rgba(26, 26, 63, .8)), url('static/images/v3g6yjn9sqcbdgwvnzfz.png') no-repeat center center fixed;
+  background-size: cover;
+  z-index: -1;
+}
+
+svg {
+  position: absolute;
+  top: 80px; /* Match this to the banner's height */
+  left: 0;
+  width: 100%;
+  height: calc(100% - 80px); /* Adjust the height to fit within the viewport */
+}
+
+.node circle {
+  stroke: white;
+  stroke-width: 1.5px;
+}
+
+.link-visible {
+  fill: none;
+  stroke: yellow;
+  stroke-width: 3px;
+}
+
+.link-hover {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 20px;
+  cursor: pointer;
+}
+
+.tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  padding: 10px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+text {
+  fill: black;
+}
+
+.legend {
+  background: #333;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.legend-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.legend-container h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  align-self: flex-start;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.legend-items-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.legend-color {
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+  border-radius: 50%; /* Add this line to make the squares circular */
+}
+
+.legend-item input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.legend-item .legend-color {
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+}
+
+.legend-item span {
+  vertical-align: middle;
+}
+
+.legend-item:first-child {
+  padding-left: 28px; /* Add left padding to the first legend item (ECLYPSE) */
+}
+
+.group-circle {
+  fill: none;
+  stroke: lightblue;
+  stroke-width: 2px;
+  stroke-dasharray: 5, 5;
+}
+
+.side-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 400px; /* Set a fixed width for the side panel */
+  height: 100%;
+  background: rgba(51, 51, 51, 0.9);
+  color: white;
+  padding: 20px 40px 20px 20px; /* Add padding on the right side */
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease-out;
+  transform: translateX(-100%);
+  z-index: 1000;
+  overflow-y: auto; /* Enable vertical scrolling if content exceeds the panel height */
+}
+
+.side-panel.show {
+  transform: translateX(0);
+}
+
+.side-panel-content {
+  opacity: 1;
+  transition: opacity 0.3s ease-out;
+}
+
+.side-panel.collapsed .side-panel-content {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.side-panel-toggle {
+  position: absolute;
+  top: 20px;
+  right: 0px;
+  width: 20px;
+  height: 60px;
+  background: rgba(51, 51, 51, 0.9);
+  border: none;
+  color: white;
+  cursor: pointer;
+  z-index: 1001;
+  outline: none;
+}
+
+.side-panel-toggle:before {
+  content: "◀";
+}
+
+.side-panel.collapsed .toggle-button:before {
+  content: "▶";
+}
+
+.dropdown-select {
+  background: #333;
+  color: white;
+  border: 1px solid white;
+  padding: 5px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.close-button {
+  float: right;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 10px;
+  margin: -10px -10px 0 0;
+}
+
+.node-hidden {
+  visibility: hidden;
+}
+
+.link-visible.link-clicked {
+  stroke: red !important;
+}
+
+.node-faded {
+  opacity: 0.2;
+}
+
+.form-container {
+  width: 100%;
+}
+
+.form-container label {
+  margin-bottom: 5px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+.form-container input {
+  margin-bottom: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-container button {
+  background: #333;
+  color: white;
+  border: 1px solid white;
+  padding: 5px 10px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.dropdown-container {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 5px;
+  border-radius: 5px;
+  position: absolute;
+  z-index: 1;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: wrap;
+  margin-top: 5px;
+}
+
+.form-container label:hover .tooltip-text {
+  visibility: visible;
+}
+
+.node-tooltip {
+  position: absolute;
+  text-align: center;
+  width: auto;
+  padding: 10px;
+  font: 12px sans-serif;
+  background: lightsteelblue;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  color: black;
+}
+
+.right-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100%;
+  background: rgba(51, 51, 51, 0.9);
+  color: white;
+  padding: 20px;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease-out;
+  z-index: 1000;
+}
+
+.right-panel-content {
+  opacity: 1;
+  transition: opacity 0.3s ease-out;
+}
+
+.right-panel.collapsed {
+  transform: translateX(100%);
+}
+
+.right-panel.collapsed .right-panel-content {
+  opacity: 0;
+}
+
+.toggle-button {
+  position: absolute;
+  top: 20px;
+  left: -20px;
+  width: 20px;
+  height: 60px;
+  background: rgba(51, 51, 51, 0.9);
+  border: none;
+  color: white;
+  cursor: pointer;
+  outline: none;
+}
+
+.toggle-button:before {
+  content: "◀";
+}
+
+.right-panel.collapsed .toggle-button:before {
+  content: "▶";
+}
+
+.link-hidden {
+  display: none;
+}
+
+  </style>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <div class="background"></div>
+  <div class="top-banner">
+    <h1>ECLYPSE Hub</h1>
+    <h2>ECLYPSE Controller Datalink Visualization</h2>
+  </div>
+  <div id="graph-container">
+    <svg></svg>
+  </div>
+    <div class="right-panel" id="right-panel">
+    <div class="right-panel-content">
+      <div class="legend-container">
+        <h3>Datalink Node Types</h3>
+        <div class="legend">
+          <div class="legend-items-container">
+            <div class="legend-item">
+              <div class="legend-color" style="background-color: #3CCFFF;"></div>
+              <span>ECLYPSE</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="bacnet-checkbox" checked>
+              <div class="legend-color" style="background-color: #3C8DFF;"></div>
+              <span>BACnet</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="modbus-checkbox" checked>
+              <div class="legend-color" style="background-color: #FF6F3C;"></div>
+              <span>Modbus</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="iot-checkbox" checked>
+              <div class="legend-color" style="background-color: #A3FF3C;"></div>
+              <span>IoT Connection</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="mqtt-checkbox" checked>
+              <div class="legend-color" style="background-color: #3CFFB5;"></div>
+              <span>MQTT Broker</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="weather-checkbox" checked>
+              <div class="legend-color" style="background-color: #3250a8;"></div>
+              <span>Weather Service</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="email-checkbox" checked>
+              <div class="legend-color" style="background-color: #FF3C7E;"></div>
+              <span>Email Server</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="ntp-checkbox" checked>
+              <div class="legend-color" style="background-color: #FFD23C;"></div>
+              <span>NTP Time Server</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="internet-checkbox" checked>
+              <div class="legend-color" style="background-color: #FF7F50;"></div>
+              <span>Internet Connectivity</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="bbmd-checkbox" checked>
+              <div class="legend-color" style="background-color: #C39BFF;"></div>
+              <span>BBMD</span>
+            </div>
+            <div class="legend-item">
+              <input type="checkbox" id="tunnel-checkbox" checked>
+              <div class="legend-color" style="background-color: #40E0D0;"></div>
+              <span>Remote Tunnel Connection</span>
+            </div>
+          </div>
+        </div>
+      <h3>Configuration</h3>
+      <div class="form-container">
+        <form id="ip-form">
+          <label for="ip-input">
+            <span class="tooltip-text">Enter IP Addresses (comma-separated or range)</span>
+            IP Addresses
+          </label>
+          <input type="text" id="ip-input" name="ip-input" required>
+          <button type="submit">Collect Data</button>
+        </form>
+        <div class="dropdown-container">
+          <select id="view-select" class="dropdown-select">
+            <option value="gfx-bacnet">GFX Network Values</option>
+            <option value="all-bacnet" selected>All Connections</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button class="toggle-button" id="toggle-right-panel"></button>
+</div>
+<div class="side-panel" id="side-panel">
+  <div class="side-panel-content">
+    <h2>Link MetaData</h2>
+    <div id="link-info"></div>
+  </div>
+  <button class="side-panel-toggle" id="toggle-side-panel"></button>
+</div>
+
+<div class="node-tooltip"></div>
+<script>
+  var width = window.innerWidth,
+      height = window.innerHeight - 80;
+
+  var zoom = d3.zoom()
+      .scaleExtent([0.1, 10])
+      .on("zoom", function (event) {
+        contentGroup.attr("transform", event.transform);
+      });
+
+  var svg = d3.select("#graph-container")
+      .append("svg")
+      .attr("width", width)
+      .attr("height", height)
+      .call(zoom);
+
+  svg.append("rect")
+      .attr("width", width)
+      .attr("height", height)
+      .style("fill", "none")
+      .style("pointer-events", "all");
+
+  var contentGroup = svg.append("g");
+
+  var simulation = d3.forceSimulation()
+      .force("link", d3.forceLink().id(d => d.id).distance(50).strength(0.5))
+      .force("charge", d3.forceManyBody().strength(-35))
+      .force("center", d3.forceCenter(width / 2, height / 2))
+      .force("collision", d3.forceCollide().radius(d => calculateCollisionRadius(d, 250))) // Increase collision radius
+      .alpha(0.8) // Set a lower initial alpha value
+      .alphaDecay(0.03) // Set a lower alpha decay rate
+      .velocityDecay(0.8); // Set a higher velocity decay rate
+
+
+
+  const rightPanel = document.getElementById("right-panel");
+  const toggleButton = document.getElementById("toggle-right-panel");
+  const onlineColor = "#66ff00";
+  const offlineColor = "gray";
+  const viewSelect = document.getElementById("view-select");
+
+  let globalData;
+  let nodesSettled = false;
+  let currentHighlightedLink = null;
+  let hidePanelTimeout;
+  let currentClickedLink = null;
+
+  simulation.on("end", () => {
+    nodesSettled = true;
+    });
+
+  d3.select("#side-panel")
+    .on("mouseover", function () {
+      clearTimeout(hidePanelTimeout);
+    });
+
+document.addEventListener('DOMContentLoaded', function () {
+    const viewSelect = document.getElementById("view-select");
+
+    // Load initial data based on the current selection or default value
+    loadDataAndUpdateGraph();
+
+    // Event listener for changes in the dropdown selection
+    viewSelect.addEventListener('change', function () {
+      localStorage.setItem('selectedView', this.value);
+      location.reload();  // Call the function to update the graph based on the new selection
+    });
+  });
+
+function isConnected(node1, node2) {
+  return simulation.force("link").links().some(function(link) {
+    return (link.source === node1 && link.target === node2) || (link.source === node2 && link.target === node1);
+  });
+}
+
+function countVisibleNodes() {
+  return d3.selectAll(".node:not(.node-hidden)").size();
+}
+
+function updateSimulation(visibleNodes) {
+  simulation
+  .force("link", d3.forceLink().id(d => d.id).distance(50).strength(0.5))
+  .force("charge", d3.forceManyBody().strength(-35))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(d => calculateCollisionRadius(d, 250))) // Increase collision radius
+  .alpha(0.8) // Set a lower initial alpha value
+  .alphaDecay(0.03) // Set a lower alpha decay rate
+  .velocityDecay(0.8); // Set a higher velocity decay rate
+}
+
+function calculateCollisionRadius(d, minDistance) {
+  const nodeSize = calculateNodeSize(d);
+  return nodeSize + minDistance;
+}
+
+function updateGraph() {
+  const visibleNodes = countVisibleNodes();
+  updateSimulation(visibleNodes);
+  updateZoom(visibleNodes);
+  
+  // Restart the simulation
+  simulation.alpha(1).restart();
+}
+
+function updateZoom(visibleNodes) {
+  zoom
+    .scaleExtent([0.1, 10 / Math.sqrt(visibleNodes)])
+    .on("zoom", function (event) {
+      contentGroup.attr("transform", event.transform);
+    });
+
+  svg.call(zoom);
+}
+
+function dragstarted(event, d) {
+  if (!event.active) simulation.alphaTarget(0.3).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+  d.dragging = true; // Set a flag to indicate dragging
+}
+
+function dragged(event, d) {
+  d.fx = event.x;
+  d.fy = Math.max(-10000, event.y); // Restrict dragging below the banner
+}
+
+function dragended(event, d) {
+  console.log("dragended function called");
+  if (!event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+  d.dragging = false; // Reset the dragging flag
+  resetNodeOpacity(); // Reset the opacity of all nodes
+}
+
+function hasLinks(nodeId, links) {
+  return links.some(link => link.source.id === nodeId || link.target.id === nodeId);
+}
+
+function generateTooltipContent(nodeData) {
+  let tooltipContent = '';
+
+  if (nodeData.id) {
+    tooltipContent += `<div>ID: ${nodeData.id}</div>`;
+  }
+  if (nodeData.description && nodeData["node-type"] !== "internet_remote") {
+    tooltipContent += `<div>Description: ${nodeData.description}</div>`;
+  }
+  if (nodeData["ip-address"]) {
+    tooltipContent += `<div>IP Address: ${nodeData["ip-address"]}</div>`;
+  }
+  if (nodeData.location) {
+    tooltipContent += `<div>Location: ${nodeData.location}</div>`;
+  }
+  if (
+    nodeData["model-name"] &&
+    (nodeData["node-type"] === "bacnet_local" ||
+      nodeData["node-type"] === "bacnet_remote" ||
+      nodeData["node-type"] === "modbus_remote")
+  ) {
+    tooltipContent += `<div>Model Name: ${nodeData["model-name"]}</div>`;
+  }
+  if (nodeData["node-type"]) {
+    let nodeType = '';
+    if (nodeData["node-type"] === "bacnet_local") {
+      nodeType = "ECLYPSE";
+    } else if (nodeData["node-type"] === "bacnet_remote") {
+      nodeType = "BACNet";
+    } else if (nodeData["node-type"] === "modbus_remote") {
+      nodeType = "Modbus";
+    } else if (nodeData["node-type"] === "weather_remote") {
+      nodeType = "Weather Service";
+    } else if (nodeData["node-type"] === "iot_remote") {
+      nodeType = "Azure IOT Hub";
+    } else if (nodeData["node-type"] === "email_remote") {
+      nodeType = "SMTP Email Server";
+    } else if (nodeData["node-type"] === "mqtt_remote") {
+      nodeType = "MQTT Broker";
+    } else if (nodeData["node-type"] === "internet_remote") {
+      nodeType = "Internet Connectivity";
+    } else if (nodeData["node-type"] === "ntp_remote") {
+      nodeType = "NTP Time Server";
+    } else if (nodeData["node-type"] === "rmt_remote") {
+      nodeType = "Remote Tunnel Connection";
+    }
+    if (
+      nodeData["node-type"] === "bacnet_local" ||
+      nodeData["node-type"] === "bacnet_remote" ||
+      nodeData["node-type"] === "modbus_remote"
+    ) {
+      tooltipContent += `<div>Node Type: ${nodeType}</div>`;
+    }
+  }
+  if (nodeData["object-name"]) {
+    tooltipContent += `<div>Object Name: ${nodeData["object-name"]}</div>`;
+  }
+  if (nodeData.provider && nodeData["node-type"] !== "weather_remote") {
+    tooltipContent += `<div>Provider: ${nodeData.provider}</div>`;
+  }
+  if (nodeData["public-ip"] && nodeData["node-type"] !== "internet_remote") {
+    tooltipContent += `<div>Public IP: ${nodeData["public-ip"]}</div>`;
+  }
+  if (nodeData["active-server"] && nodeData["node-type"] !== "ntp_remote") {
+    tooltipContent += `<div>Active Server: ${nodeData["active-server"]}</div>`;
+  }
+  if (nodeData.enabled !== undefined && nodeData["node-type"] !== "weather_remote" && nodeData["node-type"] !== "ntp_remote") {
+    tooltipContent += `<div>Enabled: ${nodeData.enabled ? 'Yes' : 'No'}</div>`;
+  }
+  if (nodeData["last-success"] && nodeData["node-type"] !== "weather_remote") {
+    tooltipContent += `<div>Last Success: ${nodeData["last-success"]}</div>`;
+  }
+
+  return tooltipContent;
+}
+
+function showTooltip(event, d) {
+  const tooltip = d3.select(".node-tooltip");
+  tooltip.transition()
+    .duration(200)
+    .style("opacity", .9);
+
+  const tooltipContent = generateTooltipContent(d);
+
+  tooltip.html(tooltipContent)
+    .style("left", (event.pageX) + "px")
+    .style("top", (event.pageY - 28) + "px");
+
+  // Find all connected nodes using BFS
+  const hoveredNode = d;
+  const connectedNodes = new Set();
+  const queue = [hoveredNode];
+
+  while (queue.length > 0) {
+    const node = queue.shift();
+    connectedNodes.add(node);
+
+    simulation.force("link").links().forEach(function(link) {
+      if (link.source === node && !connectedNodes.has(link.target)) {
+        queue.push(link.target);
+      } else if (link.target === node && !connectedNodes.has(link.source)) {
+        queue.push(link.source);
+      }
+    });
+  }
+
+  d3.selectAll(".node")
+    .classed("node-faded", function(d) {
+      return !connectedNodes.has(d);
+    });
+}
+
+function hideTooltip() {
+  const tooltip = d3.select(".node-tooltip");
+  tooltip.transition()
+    .duration(500)
+    .style("opacity", 0);
+
+  // Remove the node-faded class from all nodes
+  d3.selectAll(".node")
+    .classed("node-faded", false);
+}
+
+function resetLinkColors() {
+  d3.selectAll(".link-visible").style("stroke", function(d) {
+    const targetNode = d.target;
+    const sourceNode = d.source;
+    const linkData = findLinkData(sourceNode, targetNode);
+    const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
+    return value === "Online" || value === "True" ? onlineColor : offlineColor;
+  });
+}
+
+function hideSidePanel() {
+  const sidePanel = document.getElementById("side-panel");
+  sidePanel.classList.remove("show");
+  
+  if (currentClickedLink) {
+    d3.select(currentClickedLink.linkElement).style("stroke", null);
+    currentClickedLink = null;
+  }
+  
+  resetLinkColors();
+}
+
+function showSidePanel(event, d) {
+  const sidePanel = document.getElementById("side-panel");
+  sidePanel.classList.add("show");
+
+  const sidePanelContent = d3.select("#link-info");
+  
+  const sourceNode = d.source;
+  const targetNode = d.target;
+   
+  const sourceDeviceName = sourceNode["object-name"] || sourceNode["local-name"] || sourceNode.id;
+  const targetDeviceName = targetNode["object-name"] || targetNode["local-name"] || targetNode.id;
+  
+let linkInfo = `
+<div>Source Device: ${sourceDeviceName}</div>
+<div>Target Device: ${targetDeviceName}</div>
+`;
+
+const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
+let headingText = "";
+let listStyle = "";
+let valueStyle = "";
+
+if (targetNode["node-type"] === "bacnet_remote") {
+  headingText = selectedView === "gfx-bacnet" ? "GFX Network Values:" : "All Network Values:";
+  listStyle = "margin-left: 20px;";
+} else if (targetNode["node-type"] === "modbus_remote") {
+  headingText = "Modbus Points:";
+  listStyle = "margin-left: 20px;";
+} else if (targetNode["node-type"] === "weather_remote") {
+  headingText = "Weather Service Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "iot_remote") {
+  headingText = "IoT Connection Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "email_remote") {
+  headingText = "Email Server Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "mqtt_remote") {
+  headingText = "MQTT Broker Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "internet_remote") {
+  headingText = "Internet Connection Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "ntp_remote") {
+  headingText = "NTP Time Server Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "bbmd_primary") {
+  headingText = "BBMD Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else if (targetNode["node-type"] === "rmt_remote") {
+  headingText = "Remote Tunnel Connection Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+} else {
+  headingText = "Data:";
+  valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+}
+
+linkInfo += `
+  <h3>${headingText}</h3>
+  <ul style="${listStyle}">
+`;
+  
+  const linksData = selectedView === "gfx-bacnet" ? globalData.Links["Network Values"] : globalData.Links.Objects;
+  
+  const sourceId = sourceNode.id;
+  const targetId = targetNode.id;
+   
+  if (linksData[sourceId] && linksData[sourceId][targetId]) {
+    const linkData = linksData[sourceId][targetId];
+    
+if (targetNode["node-type"] === "bacnet_remote") {
+  // Handle BACnet nodes
+  if (linkData.objects) {
+    for (const objectType in linkData.objects) {
+      for (const objectId in linkData.objects[objectType]) {
+        const objectName = linkData.objects[objectType][objectId]["object-name"];
+        linkInfo += `<li>${objectName || "Unnamed Object"}</li>`;
+      }
+    }
+  }
+} else if (targetNode["node-type"] === "modbus_remote") {
+  // Handle Modbus nodes
+  if (linkData.points) {
+    for (const pointName in linkData.points) {
+      const objectName = linkData.points[pointName]["object-name"];
+      linkInfo += `<li>${objectName || "Unnamed Point"}</li>`;
+    }
+  }
+} else {
+  for (const key in linkData) {
+    if (key !== "count") {
+      linkInfo += `<div>${key}: <span style="${valueStyle}">${linkData[key]}</span></div>`;
+    }
+  }
+}
+
+linkInfo += `</ul>`; 
+  sidePanelContent.html(linkInfo);
+
+  sidePanel.classList.add("show");
+}
+}
+
+function loadDataAndUpdateGraph() {
+  const viewSelect = document.getElementById("view-select");
+  const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
+
+  viewSelect.value = selectedView;
+
+  d3.json("/api/data").then(function (data) {
+    globalData = data;
+
+    const nodeMap = new Map();
+    const nodesArray = Object.keys(globalData.Nodes).map(id => {
+      const node = {
+        id: String(id),
+        ...globalData.Nodes[id],
+        x: width / 2, // Set initial x position to the center
+        y: height / 2, // Set initial y position to the center
+        vx: 0,
+        vy: 0
+      };
+      nodeMap.set(node.id, node);
+      return node;
+    });
+
+    if (selectedView === "gfx-bacnet") {
+      updateNetworkValuesGraph(globalData.Links["Network Values"], nodesArray, nodeMap);
+    } else if (selectedView === "all-bacnet") {
+      updateRemoteObjectsGraph(globalData.Links.Objects, nodesArray, nodeMap);
+    }
+  }).catch(function (error) {
+    console.error("Error loading data:", error);
+  });
+}
+
+function extractLinks(linksData, nodeMap) {
+  const links = [];
+  for (const sourceId in linksData) {
+    const targets = linksData[sourceId];
+    for (const targetId in targets) {
+      if (targetId !== 'count') {
+        const sourceNode = nodeMap.get(String(sourceId));
+        const targetNode = nodeMap.get(targetId);
+        if (sourceNode && targetNode) {
+          links.push({
+            source: sourceNode,
+            target: targetNode
+          });
+        } else {
+          console.warn(`Missing node in nodeMap: source=${sourceId}, target=${targetId}`);
+        }
+      }
+    }
+  }
+  return links;
+}
+
+function createLinks(links, nodes) {
+  const linkGroup = contentGroup.append("g")
+    .attr("class", "links");
+
+  const linkVisible = linkGroup.selectAll(".link-visible")
+    .data(links)
+    .enter()
+    .append("line")
+    .attr("class", d => {
+      const targetNode = d.target;
+      const sourceNode = d.source;
+      const linkData = findLinkData(sourceNode, targetNode);
+      const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
+      return `link-visible ${value === "Online" || value === "True" ? "link-online" : "link-offline"}`;
+  })
+    .attr("id", d => `link-${d.source.id}-${d.target.id}`)
+    .style("stroke", d => {
+      const targetNode = d.target;
+      const sourceNode = d.source;
+      const linkData = findLinkData(sourceNode, targetNode);
+      const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
+      return value === "Online" || value === "True" ? onlineColor : offlineColor;
+    })
+    .style("stroke-width", 3)
+    .style("opacity", 0) // Set initial opacity to 0
+    .each(function(d) {
+      d.linkElement = this;
+    });
+
+  const linkHover = linkGroup.selectAll(".link-hover")
+    .data(links)
+    .enter()
+    .append("line")
+    .attr("class", "link-hover")
+    .style("stroke", "transparent")
+    .style("stroke-width", 20)
+    .style("opacity", 0) // Set initial opacity to 0
+    .on("click", handleLinkClick);
+
+  // Transition link lines to visible after a delay
+  setTimeout(() => {
+    linkVisible.transition()
+      .duration(500)
+      .style("opacity", 1);
+
+    linkHover.transition()
+      .duration(500)
+      .style("opacity", 1);
+  }, 800); // Adjust the delay as needed
+
+  simulation.on("tick", () => {
+    linkVisible
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    linkHover
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    contentGroup.selectAll(".node")
+      .transition() // Add transition
+      .duration(200) // Set the duration of the transition
+      .ease(d3.easeQuadOut) // Add easing function
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  simulation.nodes(nodes);
+  simulation.alpha(1).restart();
+}
+
+function handleNodeMouseOver(event, d, links) {
+  if (nodesSettled) {
+    showTooltip(event, d);
+    fadeUnconnectedNodes(d, links);
+  }
+}
+
+function handleNodeMouseOut(event, d) {
+  if (nodesSettled) {
+    hideTooltip();
+    resetNodeOpacity();
+  }
+}
+
+function fadeUnconnectedNodes(d, links) {
+  const hoveredNode = d;
+  const connectedNodes = new Set([hoveredNode]);
+
+  links.forEach(function(link) {
+  if (link.source.id === hoveredNode.id) {
+    connectedNodes.add(link.target);
+  } else if (link.target.id === hoveredNode.id) {
+    connectedNodes.add(link.source);
+  }
+});
+
+  d3.selectAll(".node")
+    .transition()
+    .duration(0)
+    .style("opacity", function(d) {
+      const isConnected = connectedNodes.has(d);
+      return isConnected ? 1 : 0.2;
+    });
+
+    d3.selectAll(".link-visible")
+    .transition()
+    .duration(0)
+    .style("opacity", function(link) {
+      const isConnected = link.source === d || link.target === d;
+      return isConnected ? 1 : 0.2;
+    });
+}
+
+function resetNodeOpacity() {
+  d3.selectAll(".node")
+    .transition()
+    .duration(0)
+    .style("opacity", 1);
+
+  d3.selectAll(".link-visible")
+    .transition()
+    .duration(0)
+    .style("opacity", 1);
+}
+
+function createBACNetNodes(nodes, links) {
+  const nodeGroup = contentGroup.append("g")
+    .attr("class", "nodes")
+    .selectAll("g")
+    .data(nodes)
+    .enter()
+    .append("g")
+    .attr("class", "node")
+    .on("mouseover", (event, d) => handleNodeMouseOver(event, d, links))
+    .on("mouseout", handleNodeMouseOut);
+
+  nodeGroup.append("circle")
+    .attr("r", d => calculateNodeSize(d))
+    .attr("fill", d => {
+      if (d["node-type"] === "bacnet_local") return "#3CCFFF";
+      if (d["node-type"] === "bacnet_remote") return "#3C8DFF";
+      if (d["node-type"] === "modbus_remote") return "#FF6F3C";
+      if (d["node-type"] === "iot_remote") return "#A3FF3C";
+      if (d["node-type"] === "mqtt_remote") return "#3CFFB5";
+      if (d["node-type"] === "weather_remote") return "#3250a8";
+      if (d["node-type"] === "email_remote") return "#FF3C7E";
+      if (d["node-type"] === "ntp_remote") return "#FFD23C";
+      if (d["node-type"] === "internet_remote") return "#FF7F50";
+      if (d["node-type"] === "bbmd_primary") return "#C39BFF";
+      if (d["node-type"] === "rmt_remote") return "#40E0D0";
+      // Add more conditions for other node types
+      return "white"; // Default color for unknown node types
+    })
+    .style("opacity", 1) // Ensure initial opacity is set to 1
+    .on("mouseover", showTooltip)
+    .on("mouseout", hideTooltip);
+
+    nodeGroup.on("mouseout", (event, d) => {
+      if (nodesSettled && !d.dragging) {
+        handleNodeMouseOut(event, d);
+      }
+    });
+
+    nodeGroup.call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended)
+  );
+
+  const imageGroup = nodeGroup.append("g")
+    .attr("transform", d => `translate(0, ${-calculateNodeSize(d) * 0.4})`);
+
+  imageGroup.append("image")
+    .attr("xlink:href", d => getImageUrl(d["model-name"], d["node-type"]))
+    .attr("width", d => calculateNodeSize(d) * 1)
+    .attr("height", d => calculateNodeSize(d) * 1)
+    .attr("x", d => -calculateNodeSize(d) * 0.5)
+    .attr("y", d => -calculateNodeSize(d) * 0.4);
+
+  const textGroup = nodeGroup.append("g")
+    .attr("transform", d => `translate(0, ${calculateNodeSize(d) * 0.5})`);
+
+  textGroup.append("text")
+    .attr("text-anchor", "middle")
+    .style("font-size", d => Math.min(calculateNodeSize(d, links) * 0.4, 22) + "px")
+    .style("font-weight", "900") // Use a numeric value for font-weight
+    .text(d => {
+      if (d["node-type"] === "rmt_remote") {
+        return "Remote Tunnel";
+      } else {
+        return d["object-name"] || d["local-name"] || d.id;
+      }
+    });
+
+
+  return nodeGroup;
+}
+
+function createModbusNodes(modbusNodes, nodes, nodeMap, links) {
+  Object.keys(modbusNodes).forEach(id => {
+    if (modbusNodes[id]["node-type"] === "modbus_remote" && !nodeMap.has(id)) {
+      const node = {
+        id: String(id),
+        ...modbusNodes[id],
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: 0,
+        vy: 0
+      };
+      nodes.push(node);
+      nodeMap.set(node.id, node);
+    }
+  });
+
+  const nodeGroup = contentGroup.append("g")
+    .attr("class", "nodes")
+    .selectAll("g")
+    .data(nodes.filter(d => d["node-type"] === "modbus_remote"))
+    .enter()
+    .append("g")
+    .attr("class", "node")
+    .on("mouseover", (event, d) => handleNodeMouseOver(event, d, links))
+    .on("mouseout", handleNodeMouseOut);
+
+  nodeGroup.append("circle")
+    .attr("r", d => calculateNodeSize(d))
+    .attr("fill", "orange")
+    .style("opacity", 1) // Ensure initial opacity is set to 1
+    .on("mouseover", showTooltip)
+    .on("mouseout", hideTooltip);
+
+  nodeGroup.on("mouseout", (event, d) => {
+    if (nodesSettled && !d.dragging) {
+      handleNodeMouseOut(event, d);
+    }
+  });
+
+  nodeGroup.call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended)
+  );
+
+
+  const imageGroup = nodeGroup.append("g")
+    .attr("transform", d => `translate(0, ${-calculateNodeSize(d) * 0.4})`);
+
+  imageGroup.append("image")
+    .attr("xlink:href", d => getImageUrl(d["model-name"], d["node-type"]))
+    .attr("width", d => calculateNodeSize(d) * 0.8)
+    .attr("height", d => calculateNodeSize(d) * 0.8)
+    .attr("x", d => -calculateNodeSize(d) * 0.4)
+    .attr("y", d => -calculateNodeSize(d) * 0.4);
+
+  const textGroup = nodeGroup.append("g")
+    .attr("transform", d => `translate(0, ${calculateNodeSize(d) * 0.5})`);
+
+  textGroup.append("text")
+    .attr("text-anchor", "middle")
+    .style("font-size", d => Math.min(calculateNodeSize(d, links) * 0.4, 22) + "px")
+    .style("font-weight", "900") // Use a numeric value for font-weight
+    .text(d => d["object-name"] || d["local-name"] || d.id);
+
+  return nodeGroup;
+}
+
+function updateNetworkValuesGraph(networkValues, nodes, nodeMap) {
+  contentGroup.selectAll("*").remove();
+  d3.select("#link-info").html("");
+
+  const links = extractLinks(networkValues, nodeMap);
+
+  createLinks(links, nodes);
+  simulation.force("link").links(links);
+
+  const bacnetNodesGroup = createBACNetNodes(nodes, links);
+  const modbusNodesGroup = createModbusNodes(globalData.Nodes, nodes, nodeMap, links);
+
+  simulation.nodes(nodes);
+  simulation.alpha(1).restart();
+  updateGraph();
+  setTimeout(zoomFit, 1200);
+}
+
+function updateRemoteObjectsGraph(remoteObjects, nodes, nodeMap) {
+  contentGroup.selectAll("*").remove();
+  d3.select("#link-info").html("");
+
+  const links = extractLinks(remoteObjects, nodeMap);
+
+  createLinks(links, nodes);
+  simulation.force("link").links(links);
+
+  const bacnetNodesGroup = createBACNetNodes(nodes, links);
+  const modbusNodesGroup = createModbusNodes(globalData.Nodes, nodes, nodeMap, links);
+
+  simulation.nodes(nodes);
+  simulation.alpha(1).restart();
+  updateGraph();
+  setTimeout(zoomFit, 1200);
+}
+
+function zoomFit() {
+  const bounds = contentGroup.node().getBBox();
+  const parent = contentGroup.node().parentElement;
+  const fullWidth = parent.clientWidth || parent.parentNode.clientWidth;
+  const fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
+  const width = bounds.width;
+  const height = bounds.height;
+  const midX = bounds.x + width / 2;
+  const midY = bounds.y + height / 2;
+  if (width === 0 || height === 0) return; // nothing to fit
+  const scale = 0.95 / Math.max(width / fullWidth, height / fullHeight);
+  const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+
+  svg.transition()
+    .duration(750)
+    .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+}
+
+function calculateNodeSize(d) {
+  const minSize = 125; // Minimum size of the node
+  const maxSize = 225; // Maximum size of the node
+  const linkCount = simulation.force("link").links().filter(link => link.source.id === d.id || link.target.id === d.id).length;
+  return Math.min(minSize + (linkCount * 5), maxSize); // Increase size based on the number of links, up to a maximum size
+}
+
+function getImageUrl(modelName, nodeType) {
+  const defaultBACnetImage = "static/images/BacnetGeneric.png";
+  const defaultModbusImage = "static/images/ModbusGeneric.png";
+
+  if (!modelName) {
+    return nodeType === "modbus_remote" ? defaultModbusImage : defaultBACnetImage;
+  }
+
+  const imageName = `${modelName}.png`;
+  const imageUrl = `static/images/${imageName}`;
+
+  try {
+    const img = new Image();
+    img.src = imageUrl;
+    return imageUrl;
+  } catch (error) {
+    console.error(`Error loading image: ${imageUrl}`, error);
+    return nodeType === "modbus_remote" ? defaultModbusImage : defaultBACnetImage;
+  }
+}
+
+function handleLinkClick(event, d) {
+  if (currentClickedLink === d) {
+    // If the clicked link is the same as the currently open link, close the side panel and reset the link color
+    hideSidePanel();
+    resetLinkColor(d);
+    currentClickedLink = null;
+  } else {
+    // If a different link is clicked, update the side panel content, reset the color of the previous link, and set the color of the new link
+    if (currentClickedLink) {
+      resetLinkColor(currentClickedLink);
+    }
+    d3.select(d.linkElement).style("stroke", "red");
+    showSidePanel(event, d);
+    currentClickedLink = d;
+  }
+}
+
+function resetLinkColor(d) {
+  const targetNode = d.target;
+  const sourceNode = d.source;
+  const linkData = findLinkData(sourceNode, targetNode);
+  const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
+  console.log("Link Value:", value);
+
+  d3.select(d.linkElement)
+    .style("stroke", value === "Online" || value === "True" ? onlineColor : offlineColor);
+}
+
+function getKeyForNodeType(nodeType) {
+  switch (nodeType) {
+    case "internet_remote":
+      return "Connection-Status";
+    case "mqtt_remote":
+      return "Connection-Status";
+    case "weather_remote":
+      return "Connection-Status";
+    case "iot_remote":
+      return "Connection-Status";
+    case "email_remote":
+      return "Enabled";
+    case "ntp_remote":
+      return "Connection-Status";
+    case "rmt_remote":
+      return "Connection-Status";
+    case "bbmd_primary":
+      return "Enabled";
+    case "bacnet_remote":
+      return "Connection-Status";
+    case "modbus_remote":
+      return "Connection-Status";
+      case "bacnet_local":
+      return "Connection-Status";
+    default:
+      return "Connection-Status";
+  }
+}
+
+function findLinkData(sourceNode, targetNode) {
+  const sourceId = sourceNode.id;
+  const targetId = targetNode.id;
+
+  // Check if the link data exists in the "Network Values" section
+  if (globalData.Links["Network Values"][sourceId] && globalData.Links["Network Values"][sourceId][targetId]) {
+    return globalData.Links["Network Values"][sourceId][targetId];
+  }
+
+  // Check if the link data exists in the "Objects" section
+  if (globalData.Links.Objects[sourceId] && globalData.Links.Objects[sourceId][targetId]) {
+    return globalData.Links.Objects[sourceId][targetId];
+  }
+
+  // If no link data is found, return null or an empty object
+  return null;
+}
+
+function toggleNodesAndLinks(nodeType, visible) {
+  d3.selectAll('.node')
+    .filter(d => d['node-type'] === nodeType)
+    .classed('node-hidden', !visible);
+
+  d3.selectAll('.link-visible')
+    .filter(function(d) {
+      return d.source['node-type'] === nodeType || d.target['node-type'] === nodeType;
+    })
+    .classed('link-hidden', !visible);
+}
+
+document.getElementById('ip-form').addEventListener('submit', function(event) {
+  event.preventDefault();
+  const ipInput = document.getElementById('ip-input').value;
+  fetch('/api/data', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ ip_addresses: ipInput })
+  })
+    .then(response => response.json())
+    .then(data => {
+      globalData = data; // Update the globalData variable with the fetched data
+      loadDataAndUpdateGraph(); // Call the function to update the graph
+    })
+    .catch(error => {
+      console.error('Error:', error);
+    });
+});
+
+document.getElementById('bacnet-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('bacnet_remote', checked);
+});
+
+document.getElementById('modbus-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('modbus_remote', checked);
+});
+
+document.getElementById('iot-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('iot_remote', checked);
+});
+
+document.getElementById('mqtt-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('mqtt_remote', checked);
+});
+
+document.getElementById('weather-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('weather_remote', checked);
+});
+
+document.getElementById('email-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('email_remote', checked);
+});
+
+document.getElementById('ntp-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('ntp_remote', checked);
+});
+
+document.getElementById('internet-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('internet_remote', checked);
+});
+
+document.getElementById('bbmd-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('bbmd_primary', checked);
+});
+
+document.getElementById('tunnel-checkbox').addEventListener('change', function() {
+  const checked = this.checked;
+  toggleNodesAndLinks('rmt_remote', checked);
+});
+
+document.getElementById("toggle-side-panel").addEventListener("click", function () {
+  const sidePanel = document.getElementById("side-panel");
+  sidePanel.classList.toggle("show");
+  
+  if (!sidePanel.classList.contains("show")) {
+    hideSidePanel();
+  }
+});
+
+toggleButton.addEventListener("click", function () {
+    rightPanel.classList.toggle("collapsed");
+  });
+
+</script>
+</body>
+</html>
