@@ -722,7 +722,7 @@ def favicon():
 
 @app.route('/')
 def index():
-    return render_template('index_v5.html')
+    return render_template('index.html')
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
