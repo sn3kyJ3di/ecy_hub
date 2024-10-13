@@ -358,6 +358,7 @@ text {
 
 .link-hidden {
   display: none;
+  pointer-events: none;
 }
 
   </style>
@@ -1413,7 +1414,7 @@ text {
       const bacnetNodeTypes = ['bacnet_remote', 'bacnet_local'];
 
       // Hide or show links based on the nodeType and visibility
-      d3.selectAll('.link-visible')
+      d3.selectAll('.link-visible, .link-hover') // Select both link-visible and link-hover
         .filter(function(d) {
           if (nodeType === 'bacnet_remote') {
             // When toggling BACnet, hide links that are:
@@ -1429,11 +1430,12 @@ text {
             return d.source['node-type'] === nodeType || d.target['node-type'] === nodeType;
           }
         })
-        .classed('link-hidden', !visible);
+        .classed('link-hidden', !visible); // Apply or remove the 'link-hidden' class
 
       // Store the visibility state in localStorage
       localStorage.setItem(nodeType + '-visibility', visible);
     }
+
     document.getElementById('credentials-form').addEventListener('submit', function(event) {
       event.preventDefault();
       device_username = document.getElementById('username-input').value;
