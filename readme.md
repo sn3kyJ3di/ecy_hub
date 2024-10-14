@@ -68,6 +68,33 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
 - **Homebrew** (for macOS users): To install Node.js and other packages.
 - **Git**: For version control.
 
+### Docker Hub
+
+1. **Docker Hub Pull**
+
+    ```sh
+    docker pull fisha462/ecy_hub:x86
+    ```
+    OR
+
+    ```sh
+    docker pull fisha462/ecy_hub:arm
+    ```
+
+2. **Run the Docker Container**
+    ```sh
+    docker run -d -p 5000:5000 --name ecy_hub_container fisha462/ecy_hub:tag
+    ```
+
+4. **Verify the Container is Running**
+    ```sh
+    docker ps
+    ```
+    You should see ecy2_hub_container listed as running.
+
+5. **Access the Application**
+    Open your web browser and navigate to http://localhost:5000 .
+
 ### Installation Steps
 
 1. **Clone the Repository**
@@ -94,7 +121,7 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
     You should see ecy2_hub_container listed as running.
 
 5. **Access the Application**
-    Open your web browser and navigate to http://localhost:3333.
+    Open your web browser and navigate to http://localhost:5000 .
 
 ### Manual Installation
 
@@ -125,7 +152,7 @@ If you prefer to run the application without Docker, follow these steps:
     ```
 
 5. **Access the Application**
-    Open your web browser and navigate to http://localhost:5000.
+    Open your web browser and navigate to http://localhost:5000 .
 
 ### Configuration
 
