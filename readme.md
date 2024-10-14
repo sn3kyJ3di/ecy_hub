@@ -2,7 +2,7 @@
 
 ### Quick Preview
 
-![ECY Hub Demo Preview](https://raw.githubusercontent.com/sn3kyJ3di/ecy_hub/main/static/images/demo-preview.gif "ECY Hub Quick Preview")
+![ECY Hub Demo Preview](https://github.com/sn3kyJ3di/ecy_hub/blob/17d94268880ffb1c92608085906e6fd8da936385/static/images/demo-preview.gif "ECY Hub Quick Preview")
 
 ### Watch the Full Video
 [![ECY Hub Demo](https://img.youtube.com/vi/i07RLs32qaM/0.jpg)](https://youtu.be/i07RLs32qaM)
