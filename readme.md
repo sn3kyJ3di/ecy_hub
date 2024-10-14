@@ -83,10 +83,14 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
     ```
 
 3. **Run the Docker Container**
+    ```sh
     docker run -d -p 5000:5000 --name ecy_hub_container ecy_hub
+    ```
 
 4. **Verify the Container is Running**
+    ```sh
     docker ps
+    ```
     You should see ecy2_hub_container listed as running.
 
 5. **Access the Application**
@@ -98,20 +102,27 @@ If you prefer to run the application without Docker, follow these steps:
 
 1. **Clone the Repository**
 
-   ```bash
+    ```sh
    git clone git@github.com:sn3kyJ3di/ecy_hub.git
    cd ecy_hub
+    ```
 
 2. **Create a Virtual Environment**
+    ```sh
    python3 -m venv venv
     source venv/bin/activate
+    ```
 
 3. **Install Dependencies**
+    ```sh
     pip install --upgrade pip
     pip install -r requirements.txt
+    ```
 
 4. **Run the Application**
+    ```sh
     python async_app.py
+    ```
 
 5. **Access the Application**
     Open your web browser and navigate to http://localhost:5000.
