@@ -6,7 +6,7 @@
 ### Watch the Full Video
 [![ECY Hub Demo](https://img.youtube.com/vi/i07RLs32qaM/0.jpg)](https://youtu.be/i07RLs32qaM)
 
-ECY Hub is a powerful web application that visualizes the connectedness of one or more Distech Controls Eclypse 2 controllers using the Eclypse RESTful API. By connecting to your devices, ECY Hub extracts and processes data to display interactive visual representations of device communications. The application presents "Nodes" (representing endpoints) and "Links" (representing data exchanges) in an intuitive graph format.
+ECY Hub is a simple but powerful web application that visualizes the connectedness of one or more Distech Controls Eclypse 2 controllers using the Eclypse RESTful API. By connecting to your devices, ECY Hub extracts and processes data to display interactive visual representations of device communications. The application presents "Nodes" (representing endpoints) and "Links" (representing data exchanges) in an intuitive graph format.
 
 Key features include:
 - **Interactive Nodes:** Hover over nodes to view detailed metadata.
