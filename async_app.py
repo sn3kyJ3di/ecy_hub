@@ -731,4 +731,4 @@ if __name__ == '__main__':
     thread = threading.Thread(target=run_periodic_fetch)
     thread.daemon = True
     thread.start()
-    app.run(host='0.0.0.0', port=3333, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=False)
