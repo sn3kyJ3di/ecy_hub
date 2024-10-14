@@ -95,7 +95,7 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
 5. **Access the Application**
     Open your web browser and navigate to http://localhost:5000 .
 
-### Installation Steps
+### Installation & Build Image
 
 1. **Clone the Repository**
 
