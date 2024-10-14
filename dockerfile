@@ -29,7 +29,7 @@ COPY static/ /app/static/
 COPY templates/ /app/templates/
 
 # Expose the port your app runs on
-EXPOSE 5000
+EXPOSE 3333
 
 # Define the command to run your app using Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "async_app:app", "--workers", "4"]
