@@ -171,7 +171,7 @@ The application requires specific configurations to interact with your networked
 **Security Note:** Ensure that your credentials are stored securely. Consider using environment variables or a secrets manager to protect sensitive information.
 
 ### Project Structure
-
+``````
 ecy_hub/
 ├── async_app.py          # Main Flask application handling API interactions and data processing.
 ├── Dockerfile            # Defines the Docker image for containerizing the application.
@@ -184,6 +184,7 @@ ecy_hub/
 │   │   └── ...
 │   └── favicon.ico       # Favicon for the web application.
 └── README.md             # Project documentation.
+``````
 
 - **async_app.py:**
   Main Flask application handling API interactions and data processing.
