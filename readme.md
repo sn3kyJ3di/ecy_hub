@@ -2,7 +2,6 @@
 
 ### Watch the Full Video
 [![ECY Hub Demo](https://img.youtube.com/vi/i07RLs32qaM/0.jpg)](https://youtu.be/i07RLs32qaM)
-*Learn how ECY Hub visualizes device connections, filters node types, and displays detailed metadata.*
 
 ### Quick Preview
 ![ECY Hub Demo Preview](static/images/demo-preview.gif "ECY Hub Quick Preview")
