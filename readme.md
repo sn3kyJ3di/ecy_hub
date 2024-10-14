@@ -73,7 +73,7 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
 1. **Clone the Repository**
 
     ```bash
-    git clone git@github.com:sn3kyJ3di/ecy_hub.git
+    git clone https://github.com/sn3kyJ3di/ecy_hub.git
     cd ecy_hub
 
 2. **Build the Docker Image**
