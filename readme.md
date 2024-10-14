@@ -173,17 +173,17 @@ The application requires specific configurations to interact with your networked
 ### Project Structure
 
 ecy_hub/
-├── async_app.py # Main Flask application handling API interactions and data processing.
-├── Dockerfile # Defines the Docker image for containerizing the application.
-├── requirements.txt # Lists Python dependencies.
-├── .dockerignore # Specifies files and directories to exclude from the Docker build context.
+├── async_app.py          # Main Flask application handling API interactions and data processing.
+├── Dockerfile            # Defines the Docker image for containerizing the application.
+├── requirements.txt      # Lists Python dependencies.
+├── .dockerignore         # Specifies files and directories to exclude from the Docker build context.
 ├── templates/
-│ └── index.html # HTML template for the main page.
+│   └── index.html        # HTML template for the main page.
 ├── static/
-│ ├── images/ # Directory containing image files.
-│ │ └── ...
-│ └── favicon.ico # Favicon for the web application.
-└── README.md # Project documentation.
+│   ├── images/           # Directory containing image files.
+│   │   └── ...
+│   └── favicon.ico       # Favicon for the web application.
+└── README.md             # Project documentation.
 
 - **async_app.py:**
   Main Flask application handling API interactions and data processing.
