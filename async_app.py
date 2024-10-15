@@ -680,12 +680,13 @@ async def periodic_fetch():
     global all_network_values_global, device_ip_addresses, device_username, device_password
     while True:
         try:
-            print("Periodic fetch task started")
-            await asyncio.sleep(30)  # Wait for 30 seconds
+            logging.info("Periodic fetch task started")
             all_network_values_global = await fetch_all_data(device_ip_addresses, device_username, device_password)
-            print("Periodic fetch task completed")
+            logging.info("Periodic fetch task completed")
+            await asyncio.sleep(30)  # Wait for 30 seconds after fetching
         except Exception as e:
-            print(f"Error in periodic fetch task: {str(e)}")
+            logging.error(f"Error in periodic fetch task: {str(e)}")
+            await asyncio.sleep(30)  # Wait before retrying
 
 def run_periodic_fetch():
     loop = asyncio.new_event_loop()
@@ -693,11 +694,7 @@ def run_periodic_fetch():
     loop.run_until_complete(periodic_fetch())
 
 @app.route('/api/data', methods=['GET'])
-async def get_data():
-    global initial_fetch_completed, all_network_values_global
-    if not initial_fetch_completed:
-        all_network_values_global = await fetch_all_data()
-        initial_fetch_completed = True
+def get_data():
     return jsonify(all_network_values_global)
 
 @app.route('/api/data', methods=['POST'])
