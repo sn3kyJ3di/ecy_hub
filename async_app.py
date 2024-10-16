@@ -131,10 +131,10 @@ async def fetch_device_data(session, ip, device_username, device_password):
                     structured_data[response_id] = response_body
                 return {ip: structured_data}
             else:
-                print(f"Error fetching data from {ip}: {response.status}")
+                logging.error(f"Client error fetching data from {ip}: {e}")
                 return None
     except aiohttp.ClientError as e:
-        print(f"Error fetching data from {ip}: {e}")
+        logging.error(f"Unexpected error fetching data from {ip}: {e}")
         return None
 
 def remove_entries(d, keys_to_remove, substrings_to_remove=None):
@@ -648,7 +648,7 @@ def reorganize_data(data):
     return data
 
 async def fetch_all_data(device_ip_addresses, device_username, device_password):
-    print(f"Fetching data for IP addresses: {device_ip_addresses}")  
+    logging.info(f"Fetching data for IP addresses: {device_ip_addresses}")  
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_device_data(session, ip, device_username, device_password) for ip in device_ip_addresses]
         results = await asyncio.gather(*tasks)
@@ -704,9 +704,6 @@ async def update_data():
     device_ip_addresses = parse_ip_addresses(ip_input)
     device_username = request.json.get('username', '')
     device_password = request.json.get('password', '')
-    print(f"Received IP addresses: {device_ip_addresses}")
-    print(f"Received username: {device_username}")
-    print(f"Received password: {device_password}")
     if not initial_fetch_completed or device_ip_addresses != all_network_values_global.get('ip_addresses', []):
         all_network_values_global = await fetch_all_data(device_ip_addresses, device_username, device_password)
         all_network_values_global['ip_addresses'] = device_ip_addresses
@@ -721,7 +718,7 @@ def favicon():
 def index():
     return render_template('index.html')
 
-if __name__ == '__main__':
+#if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     all_network_values_global = loop.run_until_complete(fetch_all_data(device_ip_addresses, device_username, device_password))
     initial_fetch_completed = True
@@ -729,3 +726,12 @@ if __name__ == '__main__':
     thread.daemon = True
     thread.start()
     app.run(host='0.0.0.0', port=5000, debug=False)
+
+if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    all_network_values_global = loop.run_until_complete(fetch_all_data(device_ip_addresses, device_username, device_password))
+    initial_fetch_completed = True
+    thread = threading.Thread(target=run_periodic_fetch)
+    thread.daemon = True
+    thread.start()
+    app.run(debug=False)
