@@ -1,0 +1,13 @@
+{
+    "python.analysis.autoImportCompletions": false,
+    "python.defaultInterpreterPath": ".venv/bin/python", // for Linux/MacOS
+    "terminal.integrated.env.windows": {
+        "VIRTUAL_ENV": "${workspaceFolder}\\.venv\\Scripts\\activate"
+    },
+    "terminal.integrated.env.linux": {
+        "VIRTUAL_ENV": "${workspaceFolder}/.venv/bin/activate"
+    },
+    "terminal.integrated.env.osx": {
+        "VIRTUAL_ENV": "${workspaceFolder}/.venv/bin/activate"
+    }
+}

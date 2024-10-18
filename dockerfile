@@ -2,8 +2,12 @@
 FROM python:3.11-slim
 
 # Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV FLASK_APP=async_app.py
+ENV FLASK_RUN_HOST=0.0.0.0
+ENV FLASK_RUN_PORT=5000
+ENV FLASK_ENV=production
+
 
 # Set work directory
 WORKDIR /app
@@ -31,4 +35,4 @@ USER appuser
 EXPOSE 5000
 
 # Define the command to run your app using Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "async_app:app", "--workers", "4"]
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]

@@ -65,6 +65,7 @@ svg {
   fill: none;
   stroke: yellow;
   stroke-width: 3px;
+  pointer-events: none;
 }
 
 .link-hover {
@@ -133,12 +134,6 @@ text {
 }
 
 .legend-item input[type="checkbox"] {
-  margin-right: 10px;
-}
-
-.legend-item .legend-color {
-  width: 30px;
-  height: 30px;
   margin-right: 10px;
 }
 
@@ -361,6 +356,134 @@ text {
   pointer-events: none;
 }
 
+#loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(26, 26, 63, 0.95);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000; /* Higher than other elements */
+}
+
+.spinner {
+  border: 12px solid #f3f3f3; /* Light grey */
+  border-top: 12px solid #3CCFFF; /* Blue */
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  animation: spin 1.5s linear infinite;
+}
+
+.loading-text {
+  margin-top: 20px;
+  font-size: 18px;
+  color: white;
+}
+
+/* Spinner Animation */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.failed-ips-list {
+  list-style-type: none;
+  padding-left: 0;
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.failed-ips-list li {
+  background-color: #ff4d4d;
+  color: white;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.clear-failed-ips {
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.clear-failed-ips:hover {
+  background-color: #e60000;
+}
+
+/* The Modal (background) */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 3000; /* Sit on top */
+  padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+  transition: opacity 0.3s ease;
+  opacity: 0;
+}
+
+.modal.show {
+  display: block;
+  opacity: 1;
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fefefe;
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+  max-width: 500px;
+  border-radius: 5px;
+  color: black;
+}
+
+/* The Close Button */
+.modal-content .close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.modal-content .close:hover,
+.modal-content .close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal-failed-ips-list {
+  list-style-type: none;
+  padding-left: 0;
+  max-height: 300px; /* Limit height for scrollability */
+  overflow-y: auto; /* Enable vertical scrolling */
+}
+
+.modal-failed-ips-list li {
+  background-color: #ff4d4d; /* Red background for failed IPs */
+  color: white;
+  margin-bottom: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
   </style>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -369,6 +492,10 @@ text {
   <div class="top-banner">
     <h1>ECLYPSE Hub</h1>
     <h2>ECLYPSE Controller Datalink Visualization</h2>
+  </div>
+  <div id="loading-screen" aria-live="assertive" role="alert">
+    <div class="spinner"></div>
+    <div class="loading-text">Loading, please wait...</div>
   </div>
   <div id="graph-container">
     <svg></svg>
@@ -458,6 +585,8 @@ text {
             <input type="text" id="ip-input" name="ip-input" required>
             <button type="submit">Collect Data</button>
           </form>
+          <button id="view-failed-ips" class="view-failed-ips" aria-label="View Failed IPs">View Failed IPs (<span id="failed-ip-count">0</span>)</button>
+          <button id="clear-failed-ips" class="clear-failed-ips" aria-label="Clear Failed IPs">Clear Failed IPs</button>
           <div class="dropdown-container">
             <select id="view-select" class="dropdown-select">
               <option value="gfx-bacnet">GFX Network Values</option>
@@ -477,7 +606,18 @@ text {
     <button class="side-panel-toggle" id="toggle-side-panel"></button>
   </div>
   <div class="node-tooltip"></div>
+  <!-- Failed IPs Modal with ARIA roles -->
+  <div id="failed-ips-modal" class="modal" role="dialog" aria-labelledby="failed-ips-title" aria-modal="true">
+    <div class="modal-content">
+      <span class="close" aria-label="Close">&times;</span>
+      <h2 id="failed-ips-title">Failed IPs</h2>
+      <ul id="modal-failed-ips-list" class="modal-failed-ips-list">
+        <!-- Failed IPs will be dynamically inserted here -->
+      </ul>
+    </div>
+  </div>
   <script>
+    console.log("Script loaded successfully.");
     var width = window.innerWidth,
         height = window.innerHeight - 80;
 
@@ -526,6 +666,7 @@ text {
 
     simulation.on("end", () => {
       nodesSettled = true;
+      zoomFit();
     });
 
     d3.select("#side-panel")
@@ -533,28 +674,55 @@ text {
         clearTimeout(hidePanelTimeout);
       });
 
+    // Select modal elements
+    const failedIpsModal = document.getElementById('failed-ips-modal');
+    const viewFailedIpsButton = document.getElementById('view-failed-ips');
+    const closeModalSpan = failedIpsModal.querySelector('.close');
+
+    // Show the modal when the "View Failed IPs" button is clicked
+    viewFailedIpsButton.addEventListener('click', function() {
+      failedIpsModal.classList.add('show');
+      failedIpsModal.querySelector('.close').focus();
+    });
+
+    // Hide the modal when the close button is clicked
+    closeModalSpan.addEventListener('click', function() {
+      failedIpsModal.classList.remove('show');
+      viewFailedIpsButton.focus();
+    });
+
+    // Hide the modal when clicking outside of the modal content
+    window.addEventListener('click', function(event) {
+      if (event.target === failedIpsModal) {
+        failedIpsModal.classList.remove('show');
+        viewFailedIpsButton.focus();
+      }
+    });
+    
     document.addEventListener('DOMContentLoaded', function () {
       const viewSelect = document.getElementById("view-select");
 
-      // Load initial data based on the current selection or default value
-      loadDataAndUpdateGraph();
+      // Show the loading screen if a fetch is already in progress
+      const isLoading = localStorage.getItem('is_loading') === 'true';
+      if (isLoading) {
+        document.getElementById('loading-screen').style.display = 'flex';
+      }
 
-      // Event listener for changes in the dropdown selection
-      viewSelect.addEventListener('change', function () {
-        localStorage.setItem('selectedView', this.value);
-        location.reload();  // Reload to update the graph based on the new selection
-      });
-
-      // Retrieve stored values and fetch data on page load or refresh
       const storedIPAddresses = localStorage.getItem('ip_addresses');
       const storedUsername = localStorage.getItem('username');
       const storedPassword = localStorage.getItem('password');
+      
       if (storedIPAddresses && storedUsername && storedPassword) {
         device_username = storedUsername;
         device_password = storedPassword;
         document.getElementById('username-input').value = storedUsername;
         document.getElementById('password-input').value = storedPassword;
         document.getElementById('ip-input').value = storedIPAddresses;
+        
+        // **Before Starting Fetch**
+        localStorage.setItem('is_loading', 'true');
+        document.getElementById('loading-screen').style.display = 'flex';
+        
         fetch('/api/data', {
           method: 'POST',
           headers: {
@@ -562,16 +730,55 @@ text {
           },
           body: JSON.stringify({ ip_addresses: storedIPAddresses, username: storedUsername, password: storedPassword })
         })
-          .then(response => response.json())
+          .then(response => {
+            console.log("Received response from /api/data:", response); // Debugging log
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+          })
           .then(data => {
-            globalData = data;
-            loadDataAndUpdateGraph();
+            try {
+              console.log("Fetched data:", data); // Debugging log
+              loadDataAndUpdateGraph(data);
+              
+              // Store failed IPs
+              const failedIPs = data.failed_ips || [];
+              console.log("Failed IPs to store:", failedIPs); // Debugging log
+              localStorage.setItem('failed_ips', JSON.stringify(failedIPs));
+              
+              // Display failed IPs
+              displayFailedIPs();
+              
+              // **After Fetch Completes**
+              localStorage.setItem('is_loading', 'false');
+              document.getElementById('loading-screen').style.display = 'none';
+            } catch (error) {
+              console.error("Error during loadDataAndUpdateGraph or displayFailedIPs:", error);
+            }
           })
           .catch(error => {
-            console.error('Error:', error);
+            console.error('Fetch Error:', error);
+            
+            // **After Fetch Fails**
+            localStorage.setItem('is_loading', 'false');
+            document.getElementById('loading-screen').style.display = 'none';
+            
+            // Optionally, display an error message to the user
+            alert('Failed to load data. Please try again.');
+            
+            // Optionally, clear failed IPs on error
+            localStorage.setItem('failed_ips', JSON.stringify([]));
+            console.log('Clearing IPs on Error');
+            displayFailedIPs();
           });
+      } else {
+        // Hide the loading screen if no data is being fetched
+        document.getElementById('loading-screen').style.display = 'none';
       }
-      // Removed redundant applyStoredCheckboxStates() call
+      
+      // Remove the call to displayFailedIPs() here to prevent it from running before fetch
+      // displayFailedIPs();
     });
 
     function applyStoredCheckboxStates() {
@@ -816,11 +1023,26 @@ text {
       resetLinkColors();
     }
 
+    const nodeTypeDataMap = {
+      "modbus_remote": ["points"],
+      "bacnet_remote": ["objects"],
+      "iot_remote": ["Status", "Last-Update", "Device-ID"], // Update with actual fields
+      "mqtt_remote": ["Topic", "QoS", "Last Message"], // Update with actual fields
+      "weather_remote": ["Enabled", "Last-Success"], // Ensure these match actual data fields
+      "email_remote": ["Enabled", "Hostname"], // Ensure these match actual data fields
+      "ntp_remote": ["Active-Server", "Enabled", "Fallback-Servers", "System-Servers"],
+      "internet_remote": ["Public-Ip"], // Specific field for Internet Connection
+      "rmt_remote": ["Tunnels"], // Replace with actual field names if different
+      "bbmd_primary": ["bbmdData"] // Replace with actual field names if different
+      // Add more mappings as necessary
+    };
+
     function showSidePanel(event, d) {
       const sidePanel = document.getElementById("side-panel");
       sidePanel.classList.add("show");
 
       const sidePanelContent = d3.select("#link-info");
+      sidePanelContent.html("<p>Loading data...</p>"); // Display a loading message
 
       const sourceNode = d.source;
       const targetNode = d.target;
@@ -828,106 +1050,237 @@ text {
       const sourceDeviceName = sourceNode["object-name"] || sourceNode["local-name"] || sourceNode.id;
       const targetDeviceName = targetNode["object-name"] || targetNode["local-name"] || targetNode.id;
 
-      let linkInfo = `
-        <div>Source Device: ${sourceDeviceName}</div>
-        <div>Target Device: ${targetDeviceName}</div>
-      `;
+      // Retrieve and normalize node-type from node data
+      const sourceNodeTypeRaw = globalData.Nodes[sourceNode.id] ? globalData.Nodes[sourceNode.id]["node-type"] : "";
+      const targetNodeTypeRaw = globalData.Nodes[targetNode.id] ? globalData.Nodes[targetNode.id]["node-type"] : "";
 
+      const sourceNodeType = sourceNodeTypeRaw.toLowerCase().trim();
+      const targetNodeType = targetNodeTypeRaw.toLowerCase().trim();
       const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
-      let headingText = "";
-      let listStyle = "";
-      let valueStyle = "";
 
-      if (targetNode["node-type"] === "bacnet_remote") {
-        headingText = selectedView === "gfx-bacnet" ? "GFX Network Values:" : "All Network Values:";
-        listStyle = "margin-left: 20px;";
-      } else if (targetNode["node-type"] === "modbus_remote") {
-        headingText = "Modbus Points:";
-        listStyle = "margin-left: 20px;";
-      } else if (targetNode["node-type"] === "weather_remote") {
-        headingText = "Weather Service Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "iot_remote") {
-        headingText = "IoT Connection Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "email_remote") {
-        headingText = "Email Server Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "mqtt_remote") {
-        headingText = "MQTT Broker Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "internet_remote") {
-        headingText = "Internet Connection Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "ntp_remote") {
-        headingText = "NTP Time Server Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "bbmd_primary") {
-        headingText = "BBMD Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else if (targetNode["node-type"] === "rmt_remote") {
-        headingText = "Remote Tunnel Connection Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      } else {
-        headingText = "Data:";
-        valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
-      }
+      // Define bidirectional node types (e.g., ECLYPSE devices)
+      const bidirectionalNodeTypes = ["bacnet_local"]; // Add other bidirectional types if necessary
 
-      linkInfo += `
-        <h3>${headingText}</h3>
-        <ul style="${listStyle}">
+      // Determine if both nodes are bidirectional
+      const isBidirectional = bidirectionalNodeTypes.includes(sourceNodeType) && bidirectionalNodeTypes.includes(targetNodeType);
+
+      // **Enhanced Logging**
+      console.log("=== Show Side Panel ===");
+      console.log(`Source Node ID: ${sourceNode.id} (${sourceNodeType})`);
+      console.log(`Target Node ID: ${targetNode.id} (${targetNodeType})`);
+      console.log(`Is Bidirectional: ${isBidirectional}`);
+
+      let linkInfo = `
+        <div><strong>Source Device:</strong> ${sourceDeviceName}</div>
+        <div><strong>Target Device:</strong> ${targetDeviceName}</div>
+        <br/>
       `;
 
-      const linksData = selectedView === "gfx-bacnet" ? globalData.Links["Network Values"] : globalData.Links.Objects;
+      // Determine where to fetch link data from based on view
+      let linksData = null;
+      if (selectedView === "gfx-bacnet") {
+        linksData = globalData.Links["Network Values"];
+      } else if (selectedView === "all-bacnet") {
+        // Combine both "Network Values" and "Objects" for comprehensive data
+        linksData = { ...globalData.Links["Network Values"], ...globalData.Links.Objects };
+      }
 
       const sourceId = sourceNode.id;
       const targetId = targetNode.id;
 
-      if (linksData[sourceId] && linksData[sourceId][targetId]) {
-        const linkData = linksData[sourceId][targetId];
+      if (isBidirectional) {
+        // Handle bidirectional data for ECLYPSE devices
 
-        if (targetNode["node-type"] === "bacnet_remote") {
-          // Handle BACnet nodes
-          if (linkData.objects) {
-            for (const objectType in linkData.objects) {
-              for (const objectId in linkData.objects[objectType]) {
-                const objectName = linkData.objects[objectType][objectId]["object-name"];
-                linkInfo += `<li>${objectName || "Unnamed Object"}</li>`;
-              }
-            }
-          }
-        } else if (targetNode["node-type"] === "modbus_remote") {
-          // Handle Modbus nodes
-          if (linkData.points) {
-            for (const pointName in linkData.points) {
-              const objectName = linkData.points[pointName]["object-name"];
-              linkInfo += `<li>${objectName || "Unnamed Point"}</li>`;
-            }
-          }
-        } else {
-          for (const key in linkData) {
-            if (key !== "count") {
-              linkInfo += `<div>${key}: <span style="${valueStyle}">${linkData[key]}</span></div>`;
+        // Retrieve linkData for source to target
+        const linkDataSourceToTarget = linksData[sourceId] && linksData[sourceId][targetId] ? linksData[sourceId][targetId] : null;
+
+        // Retrieve linkData for target to source
+        const linkDataTargetToSource = linksData[targetId] && linksData[targetId][sourceId] ? linksData[targetId][sourceId] : null;
+
+        // **Enhanced Logging**
+        console.log("Link Data Source → Target:", linkDataSourceToTarget);
+        console.log("Link Data Target → Source:", linkDataTargetToSource);
+
+        // Initialize arrays to collect objects
+        let allObjectsSourceToTarget = [];
+        let allObjectsTargetToSource = [];
+
+        // Collect objects from source to target
+        if (linkDataSourceToTarget && linkDataSourceToTarget.objects) {
+          for (const objectType in linkDataSourceToTarget.objects) {
+            for (const objectId in linkDataSourceToTarget.objects[objectType]) {
+              const objectName = linkDataSourceToTarget.objects[objectType][objectId]["object-name"];
+              allObjectsSourceToTarget.push(objectName || "Unnamed Object");
             }
           }
         }
 
-        linkInfo += `</ul>`; 
+        // Collect objects from target to source
+        if (linkDataTargetToSource && linkDataTargetToSource.objects) {
+          for (const objectType in linkDataTargetToSource.objects) {
+            for (const objectId in linkDataTargetToSource.objects[objectType]) {
+              const objectName = linkDataTargetToSource.objects[objectType][objectId]["object-name"];
+              allObjectsTargetToSource.push(objectName || "Unnamed Object");
+            }
+          }
+        }
+
+        // Function to generate HTML for lists
+        function generateListHTML(items) {
+          if (items.length === 0) return "<li>No data available.</li>";
+          return items.map(item => `<li>${item}</li>`).join("");
+        }
+
+        // Append Source → Target Data
+        linkInfo += `
+          <h3>ECLYPSE Data (${sourceDeviceName} → ${targetDeviceName}):</h3>
+          <ul>
+            ${generateListHTML(allObjectsSourceToTarget)}
+          </ul>
+        `;
+        if (linkDataSourceToTarget && linkDataSourceToTarget["Connection-Status"]) {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="font-family: 'Courier New', monospace; color: #00ff00;">${linkDataSourceToTarget["Connection-Status"]}</span></div><br/>`;
+        } else {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="font-family: 'Courier New', monospace; color: #00ff00;">N/A</span></div><br/>`;
+        }
+
+        // Append Target → Source Data
+        linkInfo += `
+          <div><strong>Source Device:</strong> ${targetDeviceName}</div>
+          <div><strong>Target Device:</strong> ${sourceDeviceName}</div>
+          <br/>
+          <h3>ECLYPSE Data (${targetDeviceName} → ${sourceDeviceName}):</h3>
+          <ul>
+            ${generateListHTML(allObjectsTargetToSource)}
+          </ul>
+        `;
+        if (linkDataTargetToSource && linkDataTargetToSource["Connection-Status"]) {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="font-family: 'Courier New', monospace; color: #00ff00;">${linkDataTargetToSource["Connection-Status"]}</span></div>`;
+        } else {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="font-family: 'Courier New', monospace; color: #00ff00;">N/A</span></div>`;
+        }
+
+      } else {
+        // Handle unidirectional data for all other node types
+
+        // Retrieve linkData in one direction (source to target)
+        const linkData = linksData[sourceId] && linksData[sourceId][targetId] ? linksData[sourceId][targetId] : null;
+
+        // **Enhanced Logging**
+        console.log("=== Processing Unidirectional Link ===");
+        console.log("Link Data Source → Target:", linkData);
+
+        if (!linkData) {
+          linkInfo += `<div>No link data available.</div>`;
+          sidePanelContent.html(linkInfo);
+          return;
+        }
+
+        // Initialize arrays to collect data
+        let allObjects = [];
+        let allPoints = [];
+        let allCustomDataItems = []; // For other custom data fields
+
+        // Collect 'objects' if present (e.g., for bacnet_remote)
+        if (linkData.objects) {
+          for (const objectType in linkData.objects) {
+            for (const objectId in linkData.objects[objectType]) {
+              const objectName = linkData.objects[objectType][objectId]["object-name"];
+              allObjects.push(objectName || "Unnamed Object");
+            }
+          }
+        }
+
+        // Collect 'points' if present (e.g., for modbus_remote)
+        if (linkData.points) {
+          for (const pointId in linkData.points) {
+            const pointName = linkData.points[pointId]["object-name"];
+            allPoints.push(pointName || "Unnamed Point");
+          }
+        }
+
+        // Collect other custom data fields based on nodeTypeDataMap
+        const dataFieldsSource = nodeTypeDataMap[sourceNodeType] || [];
+        const dataFieldsTarget = nodeTypeDataMap[targetNodeType] || [];
+
+        // Merge data fields, excluding 'points' and 'objects' to prevent duplication
+        const customDataFields = [...dataFieldsSource, ...dataFieldsTarget].filter(field => field !== "points" && field !== "objects");
+
+        for (const field of customDataFields) {
+          if (linkData[field] !== undefined && linkData[field] !== null) {
+            if (typeof linkData[field] === 'object' && !Array.isArray(linkData[field])) {
+              // If the field is an object, iterate over its key-value pairs
+              for (const key in linkData[field]) {
+                const value = linkData[field][key];
+                allCustomDataItems.push(`${key}: ${value}`);
+              }
+            } else {
+              // If the field is a primitive or array, display its value
+              allCustomDataItems.push(`${field}: ${linkData[field]}`);
+            }
+          }
+        }
+
+        // Function to generate HTML for lists
+        function generateListHTML(items) {
+          if (items.length === 0) return "<li>No data available.</li>";
+          return items.map(item => `<li>${item}</li>`).join("");
+        }
+
+        // Determine heading and list based on available data
+        let headingText = "";
+        let listHTML = "";
+        let valueStyle = "font-family: 'Courier New', monospace; color: #00ff00;";
+
+        if (allPoints.length > 0) {
+          headingText = "Modbus Points:";
+          listHTML = generateListHTML(allPoints);
+        } else if (allObjects.length > 0) {
+          headingText = "Bacnet Remote Objects:";
+          listHTML = generateListHTML(allObjects);
+        }
+
+        // Append List-Based Data (objects or points)
+        if (listHTML) {
+          linkInfo += `
+            <h3>${headingText}</h3>
+            <ul>
+              ${listHTML}
+            </ul>
+          `;
+        }
+
+        // Append Custom Data as Separate Divs
+        if (allCustomDataItems.length > 0) {
+          linkInfo += `
+            <h3>Custom Data:</h3>
+          `;
+          for (const item of allCustomDataItems) {
+            linkInfo += `<div>${item}</div>`;
+          }
+        }
+
+        // Append Connection Status
+        if (linkData["Connection-Status"]) {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="${valueStyle}">${linkData["Connection-Status"]}</span></div>`;
+        } else {
+          linkInfo += `<div><strong>Connection Status:</strong> <span style="${valueStyle}">No data available.</span></div>`;
+        }
       }
 
+      // Finalize the HTML content
       sidePanelContent.html(linkInfo);
-
-      sidePanel.classList.add("show");
     }
 
-    function loadDataAndUpdateGraph() {
-      const viewSelect = document.getElementById("view-select");
-      const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
+    function loadDataAndUpdateGraph(data) {
+      try {
+        console.log("Loading data into graph:", data); // Debugging log
+        globalData = data; // Assign the passed data to globalData
 
-      viewSelect.value = selectedView;
+        const viewSelect = document.getElementById("view-select");
+        const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
 
-      d3.json("/api/data").then(function (data) {
-        globalData = data;
+        viewSelect.value = selectedView;
 
         const nodeMap = new Map();
         const nodesArray = Object.keys(globalData.Nodes).map(id => {
@@ -951,11 +1304,13 @@ text {
 
         // Apply stored checkbox states after the graph is loaded
         applyStoredCheckboxStates();
-      }).catch(function (error) {
-        console.error("Error loading data:", error);
-      });
+        
+        console.log("Graph loaded and updated."); // Debugging log
+      } catch (error) {
+        console.error("Error in loadDataAndUpdateGraph:", error);
+      }
     }
-
+    
     function extractLinks(linksData, nodeMap) {
       const links = [];
       for (const sourceId in linksData) {
@@ -987,22 +1342,19 @@ text {
         .enter()
         .append("line")
         .attr("class", d => {
-          const targetNode = d.target;
-          const sourceNode = d.source;
-          const linkData = findLinkData(sourceNode, targetNode);
+          const linkData = findLinkData(d.source, d.target);
           const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
           return `link-visible ${value === "Online" || value === "True" ? "link-online" : "link-offline"}`;
         })
         .attr("id", d => `link-${d.source.id}-${d.target.id}`)
         .style("stroke", d => {
-          const targetNode = d.target;
-          const sourceNode = d.source;
-          const linkData = findLinkData(sourceNode, targetNode);
+          const linkData = findLinkData(d.source, d.target);
           const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
           return value === "Online" || value === "True" ? onlineColor : offlineColor;
         })
         .style("stroke-width", 3)
         .style("opacity", 0) // Set initial opacity to 0
+        .style("pointer-events", "none") // Ensure no pointer events
         .each(function(d) {
           d.linkElement = this;
         });
@@ -1015,7 +1367,8 @@ text {
         .style("stroke", "transparent")
         .style("stroke-width", 20)
         .style("opacity", 0) // Set initial opacity to 0
-        .on("click", handleLinkClick);
+        .on("click", handleLinkClick)
+        .style("pointer-events", "auto"); // Enable pointer events for hover
 
       // Transition link lines to visible after a delay
       setTimeout(() => {
@@ -1262,7 +1615,7 @@ text {
       simulation.nodes(nodes);
       simulation.alpha(1).restart();
       updateGraph();
-      setTimeout(zoomFit, 1200);
+      //setTimeout(zoomFit, 1200);
     }
 
     function updateRemoteObjectsGraph(remoteObjects, nodes, nodeMap) {
@@ -1280,27 +1633,61 @@ text {
       simulation.nodes(nodes);
       simulation.alpha(1).restart();
       updateGraph();
-      setTimeout(zoomFit, 1200);
+      //setTimeout(zoomFit, 1200);
     }
 
     function zoomFit() {
-      const bounds = contentGroup.node().getBBox();
-      const parent = contentGroup.node().parentElement;
-      const fullWidth = parent.clientWidth || parent.parentNode.clientWidth;
-      const fullHeight = parent.clientHeight || parent.parentNode.clientHeight;
-      const width = bounds.width;
-      const height = bounds.height;
-      const midX = bounds.x + width / 2;
-      const midY = bounds.y + height / 2;
-      if (width === 0 || height === 0) return; // nothing to fit
-      const scale = 0.95 / Math.max(width / fullWidth, height / fullHeight);
-      const translate = [fullWidth / 2 - scale * midX, fullHeight / 2 - scale * midY];
+      // Select all visible nodes
+      const visibleNodes = contentGroup.selectAll(".node:not(.node-hidden)").data();
+      if (visibleNodes.length === 0) return; // Exit if no visible nodes
 
+      // Calculate the extent of the visible nodes, accounting for node size
+      const minX = d3.min(visibleNodes, d => d.x - calculateNodeSize(d));
+      const maxX = d3.max(visibleNodes, d => d.x + calculateNodeSize(d));
+      const minY = d3.min(visibleNodes, d => d.y - calculateNodeSize(d));
+      const maxY = d3.max(visibleNodes, d => d.y + calculateNodeSize(d));
+
+      if (minX === undefined || maxX === undefined || minY === undefined || maxY === undefined) return;
+
+      // Define padding around the nodes
+      const padding = 200; // Increased padding to prevent cutoff
+
+      // Calculate the width and height of the bounding box
+      const width = maxX - minX;
+      const height = maxY - minY;
+
+      // Get SVG dimensions
+      const svgWidth = parseInt(svg.attr("width"));
+      const svgHeight = parseInt(svg.attr("height"));
+
+      // Avoid division by zero
+      if (width === 0 || height === 0) return;
+
+      // Calculate the scale to fit all visible nodes within the SVG, considering padding
+      const scale = (0.95 * Math.min(svgWidth / width, svgHeight / height)) / 1; // Adjust numerator as needed
+
+      // Calculate the translation to center the bounding box
+      const translate = [
+        svgWidth / 2 - scale * (minX + width / 2),
+        svgHeight / 2 - scale * (minY + height / 2)
+      ];
+
+      // Optional: Limit the scale to prevent excessive zooming
+      const maxScale = 5;
+      const minScale = 0.1;
+      const adjustedScale = Math.min(Math.max(scale, minScale), maxScale);
+
+      // Apply the zoom transformation
       svg.transition()
         .duration(750)
-        .call(zoom.transform, d3.zoomIdentity.translate(translate[0], translate[1]).scale(scale));
+        .call(
+          zoom.transform,
+          d3.zoomIdentity
+            .translate(translate[0], translate[1])
+            .scale(adjustedScale)
+        );
     }
-
+    
     function calculateNodeSize(d) {
       const minSize = 125; // Minimum size of the node
       const maxSize = 225; // Maximum size of the node
@@ -1312,19 +1699,63 @@ text {
       const defaultBACnetImage = "static/images/BacnetGeneric.png";
       const defaultModbusImage = "static/images/ModbusGeneric.png";
 
-      if (!modelName) {
-        return nodeType === "modbus_remote" ? defaultModbusImage : defaultBACnetImage;
-      }
+      // Hardcoded mapping between model names and their specific images
+      const modelImageMap = {
+        "ECB_203": "static/images/ECB_203.png",
+        "ECB_253": "static/images/ECB_253.png",
+        "ECB_300": "static/images/ECB_300.png",
+        "ECB_350": "static/images/ECB_350.png",
+        "ECB_400": "static/images/ECB_400.png",
+        "ECB_403": "static/images/ECB_403.png",
+        "ECB_450": "static/images/ECB_450.png",
+        "ECB_453": "static/images/ECB_453.png",
+        "ECB_600": "static/images/ECB_600.png",
+        "ECB_650": "static/images/ECB_650.png",
+        "ECB_VAV": "static/images/ECB_VAV.png",
+        "ECY-VAV": "static/images/ECY-VAV-BI.png",
+        "ECY-VAV-BI": "static/images/ECY-VAV-BI.png",
+        "ECY-PTU-107-BI": "static/images/ECY-PTU-107-BI.png",
+        "ECY-PTU-107": "static/images/ECY-PTU-107-BI.png",
+        "ECY-TU203-BI": "static/images/ECY-TU203-BI.png",
+        "ECY-TU203": "static/images/ECY-TU203-BI.png",
+        "ECY-PTU-207-BI": "static/images/ECY-PTU-207-BI.png",
+        "ECY-PTU-207": "static/images/ECY-PTU-207-BI.png",
+        "ECY-PTU-208-BI": "static/images/ECY-PTU-208-BI.png",
+        "ECY-PTU-208": "static/images/ECY-PTU-208-BI.png",
+        "ECY-303": "static/images/ECY-303-BI.png",
+        "ECY-303-BI": "static/images/ECY-303-BI.png",
+        "ECY-400-BI": "static/images/ECY-400-BI.png",
+        "ECY-450-BI": "static/images/ECY-450-BI.png",
+        "ECY-600-BI": "static/images/ECY-600-BI.png",
+        "ECY-650-BI": "static/images/ECY-650-BI.png",
+        "ECY-APEX": "static/images/ECY-APEX-BI.png",
+        "ECY-S1000": "static/images/ECY-S1000-BI.png",
+        "ECY-S1000-BI": "static/images/ECY-S1000-BI.png",
+        "HORYZON-C": "static/images/HORYZON-C-BI.png",
+        "HORYZON-C-BI": "static/images/HORYZON-C-BI.png",
+        "ECY-APEX-BI": "static/images/ECY-APEX-BI.png",
+        "ECY-APEX": "static/images/ECY-APEX-BI.png",
+        "ECY-RM-BI": "static/images/ECY-RM-BI.png",
+        "ECY-STAT-R Rev 0.0A": "static/images/ECY-STAT-R Rev 0.0A.png",
+        "ECY-STAT-R-BI": "static/images/ECY-STAT-R-BI.png",
+        "KE2IN.BN.DV.J4": "static/images/KE2IN.BN.DV.J4.png",
+        "KE2IN.BN.GW": "static/images/KE2IN.BN.GW.png",
+        "weather_server": "static/images/weather_server.png",
+        "iot_hub": "static/images/iot_hub.png",
+        "email_server": "static/images/email_server.png",
+        "mqtt_broker": "static/images/mqtt_broker.png",
+        "internet_server": "static/images/internet_server.png",
+        "time_server": "static/images/time_server.png",
+        "rmt_tunnel": "static/images/rmt_tunnel.png",
+        "Niagara4 Station": "static/images/niagara_station.png",
+        // Add more model mappings as needed
+      };
 
-      const imageName = `${modelName}.png`;
-      const imageUrl = `static/images/${imageName}`;
-
-      try {
-        const img = new Image();
-        img.src = imageUrl;
-        return imageUrl;
-      } catch (error) {
-        console.error(`Error loading image: ${imageUrl}`, error);
+      // Check if the modelName exists in the mapping
+      if (modelName && modelImageMap.hasOwnProperty(modelName)) {
+        return modelImageMap[modelName];
+      } else {
+        // Return the default image based on nodeType
         return nodeType === "modbus_remote" ? defaultModbusImage : defaultBACnetImage;
       }
     }
@@ -1390,17 +1821,17 @@ text {
       const sourceId = sourceNode.id;
       const targetId = targetNode.id;
 
-      // Check if the link data exists in the "Network Values" section
+      // Prioritize "Network Values" over "Objects"
       if (globalData.Links["Network Values"][sourceId] && globalData.Links["Network Values"][sourceId][targetId]) {
         return globalData.Links["Network Values"][sourceId][targetId];
       }
 
-      // Check if the link data exists in the "Objects" section
+      // Then check "Objects"
       if (globalData.Links.Objects[sourceId] && globalData.Links.Objects[sourceId][targetId]) {
         return globalData.Links.Objects[sourceId][targetId];
       }
 
-      // If no link data is found, return null or an empty object
+      // If no link data is found, return null
       return null;
     }
 
@@ -1417,13 +1848,11 @@ text {
       d3.selectAll('.link-visible, .link-hover') // Select both link-visible and link-hover
         .filter(function(d) {
           if (nodeType === 'bacnet_remote') {
-            // When toggling BACnet, hide links that are:
-            // - Connected to bacnet_remote nodes
-            // - Between two bacnet_local nodes (ECLYPSE nodes)
+            // When toggling bacnet_remote, hide links connected to bacnet_remote nodes
+            // Do NOT hide links between two bacnet_local nodes (ECLYPSE nodes)
             return (
               d.source['node-type'] === 'bacnet_remote' ||
-              d.target['node-type'] === 'bacnet_remote' ||
-              (d.source['node-type'] === 'bacnet_local' && d.target['node-type'] === 'bacnet_local')
+              d.target['node-type'] === 'bacnet_remote'
             );
           } else {
             // For other node types, hide links connected to the specific nodeType
@@ -1434,6 +1863,44 @@ text {
 
       // Store the visibility state in localStorage
       localStorage.setItem(nodeType + '-visibility', visible);
+    }
+
+    function displayFailedIPs() {
+      const failedIPs = JSON.parse(localStorage.getItem('failed_ips')) || [];
+      console.log("Displaying Failed IPs:", failedIPs); // Debugging log
+      const failedIPCount = failedIPs.length;
+      const failedIpCountSpan = document.getElementById('failed-ip-count');
+      const viewFailedIpsButton = document.getElementById('view-failed-ips');
+      
+      // Update the failed IP count
+      failedIpCountSpan.textContent = failedIPCount;
+      
+      // Enable or disable the view button based on the count
+      if (failedIPCount > 0) {
+        viewFailedIpsButton.disabled = false;
+        viewFailedIpsButton.style.opacity = 1;
+        viewFailedIpsButton.style.cursor = 'pointer';
+      } else {
+        viewFailedIpsButton.disabled = true;
+        viewFailedIpsButton.style.opacity = 0.5;
+        viewFailedIpsButton.style.cursor = 'not-allowed';
+      }
+      
+      // Populate the modal with failed IPs
+      const modalFailedIpsList = document.getElementById('modal-failed-ips-list');
+      modalFailedIpsList.innerHTML = ''; // Clear existing list
+      
+      if (failedIPCount === 0) {
+        modalFailedIpsList.innerHTML = '<li>No failed IPs.</li>';
+      } else {
+        failedIPs.forEach(ip => {
+          const li = document.createElement('li');
+          li.textContent = ip;
+          modalFailedIpsList.appendChild(li);
+        });
+      }
+      
+      console.log("Failed IPs prepared for modal."); // Debugging log
     }
 
     document.getElementById('credentials-form').addEventListener('submit', function(event) {
@@ -1447,9 +1914,15 @@ text {
     document.getElementById('ip-form').addEventListener('submit', function(event) {
       event.preventDefault();
       const ipInput = document.getElementById('ip-input').value;
+      
+      // **Before Starting Fetch**
+      localStorage.setItem('is_loading', 'true');
+      document.getElementById('loading-screen').style.display = 'flex';
+      
       localStorage.setItem('ip_addresses', ipInput);
       localStorage.setItem('username', device_username);
       localStorage.setItem('password', device_password);
+      
       fetch('/api/data', {
         method: 'POST',
         headers: {
@@ -1459,15 +1932,41 @@ text {
       })
         .then(response => response.json())
         .then(data => {
-          globalData = data;
-          loadDataAndUpdateGraph();
+          loadDataAndUpdateGraph(data);
+          
+          // Store failed IPs
+          const failedIPs = data.failed_ips || [];
+          console.log("Failed IPs to store:", failedIPs); // Debugging log
+          localStorage.setItem('failed_ips', JSON.stringify(failedIPs));
+          
+          // Display failed IPs
+          displayFailedIPs();
+          
+          // **After Fetch Completes**
+          localStorage.setItem('is_loading', 'false');
+          document.getElementById('loading-screen').style.display = 'none';
         })
         .catch(error => {
           console.error('Error:', error);
+          
+          // **After Fetch Fails**
+          localStorage.setItem('is_loading', 'false');
+          document.getElementById('loading-screen').style.display = 'none';
+          
+          // Optionally, display an error message to the user
+          alert('Failed to load data. Please try again.');
+          
+          // Optionally, clear failed IPs on error
+          localStorage.setItem('failed_ips', JSON.stringify([]));
+          displayFailedIPs();
         });
     });
 
-    // Add event listeners for all checkboxes
+    document.getElementById('clear-failed-ips').addEventListener('click', function() {
+      localStorage.setItem('failed_ips', JSON.stringify([]));
+      displayFailedIPs();
+    });
+
     const checkboxIds = [
       'bacnet-checkbox',
       'modbus-checkbox',
@@ -1498,6 +1997,9 @@ text {
         const nodeType = nodeTypeMap[id];
         const checked = this.checked;
         toggleNodesAndLinks(nodeType, checked);
+        
+        // After toggling, re-apply zoom to fit visible nodes
+        zoomFit();
       });
     });
 
@@ -1513,6 +2015,25 @@ text {
     toggleButton.addEventListener("click", function () {
       rightPanel.classList.toggle("collapsed");
     });
+    
+    window.addEventListener('resize', () => {
+      // Update width and height based on the new window size
+      width = window.innerWidth;
+      height = window.innerHeight - 80; // Adjust if necessary based on your layout
+
+      // Update the SVG dimensions
+      svg.attr("width", width).attr("height", height);
+
+      // Update the simulation's center force
+      simulation.force("center", d3.forceCenter(width / 2, height / 2));
+
+      // Restart the simulation to apply the new center force
+      simulation.alpha(1).restart();
+
+      // Adjust the zoom to fit the visible nodes
+      zoomFit();
+    });
+
   </script>
 </body>
 </html>

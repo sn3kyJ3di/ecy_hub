@@ -5,6 +5,8 @@ import asyncio
 import requests
 import logging
 import threading
+
+from aiohttp import ClientTimeout
 from flask import Flask, jsonify, render_template, send_from_directory, request
 
 app = Flask(__name__)
@@ -17,9 +19,11 @@ device_cookies = {}
 cache = {}
 initial_fetch_completed = False
 all_network_values_global = {}
+device_ip_addresses = set()  # Active IPs as a set
+failed_ip_addresses = set()  # Failed IPs as a set
 
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 def parse_ip_addresses(ip_input):
     ip_addresses = []
@@ -120,22 +124,28 @@ async def fetch_device_data(session, ip, device_username, device_password):
             }
         ]
     }
+
+    timeout = ClientTimeout(total=5)
+    
     try:
-        async with session.post(url, headers=headers, json=body, ssl=False) as response:
+        async with session.post(url, headers=headers, json=body, ssl=False, timeout=timeout) as response:
             if response.status == 200:
                 data = await response.json()
                 structured_data = {}
-                for response in data.get("responses", []):
-                    response_id = response.get("id")
-                    response_body = response.get("body")
+                for response_item in data.get("responses", []):
+                    response_id = response_item.get("id")
+                    response_body = response_item.get("body")
                     structured_data[response_id] = response_body
                 return {ip: structured_data}
             else:
-                logging.error(f"Client error fetching data from {ip}: {e}")
-                return None
+                logging.error(f"Client error fetching data from {ip}: HTTP {response.status}")
+                return {"ip": ip, "status": "error", "message": f"HTTP {response.status}"}
+    except asyncio.TimeoutError:
+        logging.error(f"Timeout error fetching data from {ip}")
+        return {"ip": ip, "status": "timeout", "message": "Request timed out"}
     except aiohttp.ClientError as e:
         logging.error(f"Unexpected error fetching data from {ip}: {e}")
-        return None
+        return {"ip": ip, "status": "error", "message": str(e)}
 
 def remove_entries(d, keys_to_remove, substrings_to_remove=None):
     """
@@ -648,13 +658,24 @@ def reorganize_data(data):
     return data
 
 async def fetch_all_data(device_ip_addresses, device_username, device_password):
-    logging.info(f"Fetching data for IP addresses: {device_ip_addresses}")  
+    logging.info(f"Fetching data for IP addresses: {device_ip_addresses}")
+    global failed_ip_addresses
+    failed_ip_addresses = set()  # Reset the set at the start of the fetch  
+    all_network_values_global["loading"] = True  # Set loading to True
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_device_data(session, ip, device_username, device_password) for ip in device_ip_addresses]
         results = await asyncio.gather(*tasks)
         all_data = {}
         for result in results:
-            if result is not None:
+            if isinstance(result, dict) and "status" in result:
+                ip = result.get("ip")
+                status = result.get("status")
+                message = result.get("message")
+                if status == "timeout" or status == "error":
+                    failed_ip_addresses.add(ip)
+                    device_ip_addresses.discard(ip)  # Remove from active IPs
+                    logging.warning(f"Removing IP {ip} from active list due to {status}: {message}")
+            elif result is not None:
                 all_data.update(result)
         keys_to_remove = {"4194303", "4194304"}  
         cleaned_data = {ip: remove_entries(data, keys_to_remove) for ip, data in all_data.items()}
@@ -673,7 +694,9 @@ async def fetch_all_data(device_ip_addresses, device_username, device_password):
         for ip in list(reorganized_data.keys()):
             if ip in device_ip_addresses:
                 del reorganized_data[ip]
-        final_data = calculate_cumulative_counts(reorganized_data)     
+        final_data = calculate_cumulative_counts(reorganized_data)
+        final_data["failed_ips"] = list(failed_ip_addresses)
+        final_data["loading"] = False  # Set loading to False     
         return final_data
 
 async def periodic_fetch():
@@ -681,11 +704,14 @@ async def periodic_fetch():
     while True:
         try:
             logging.info("Periodic fetch task started")
+            all_network_values_global["loading"] = True
             all_network_values_global = await fetch_all_data(device_ip_addresses, device_username, device_password)
             logging.info("Periodic fetch task completed")
+            all_network_values_global["loading"] = False
             await asyncio.sleep(30)  # Wait for 30 seconds after fetching
         except Exception as e:
             logging.error(f"Error in periodic fetch task: {str(e)}")
+            all_network_values_global["loading"] = False
             await asyncio.sleep(30)  # Wait before retrying
 
 def run_periodic_fetch():
@@ -700,14 +726,16 @@ def get_data():
 @app.route('/api/data', methods=['POST'])
 async def update_data():
     global initial_fetch_completed, all_network_values_global, device_username, device_password, device_ip_addresses
+    all_network_values_global["loading"] = True
     ip_input = request.json.get('ip_addresses', '')
-    device_ip_addresses = parse_ip_addresses(ip_input)
+    device_ip_addresses = set(parse_ip_addresses(ip_input))  # Ensure it's a set
     device_username = request.json.get('username', '')
     device_password = request.json.get('password', '')
-    if not initial_fetch_completed or device_ip_addresses != all_network_values_global.get('ip_addresses', []):
+    if not initial_fetch_completed or device_ip_addresses != set(all_network_values_global.get('ip_addresses', [])):
         all_network_values_global = await fetch_all_data(device_ip_addresses, device_username, device_password)
-        all_network_values_global['ip_addresses'] = device_ip_addresses
+        all_network_values_global['ip_addresses'] = list(device_ip_addresses)  # Convert set to list for JSON
         initial_fetch_completed = True
+    all_network_values_global["loading"] = False
     return jsonify(all_network_values_global)
 
 @app.route('/favicon.ico')
@@ -718,15 +746,6 @@ def favicon():
 def index():
     return render_template('index.html')
 
-#if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    all_network_values_global = loop.run_until_complete(fetch_all_data(device_ip_addresses, device_username, device_password))
-    initial_fetch_completed = True
-    thread = threading.Thread(target=run_periodic_fetch)
-    thread.daemon = True
-    thread.start()
-    app.run(host='0.0.0.0', port=5000, debug=False)
-
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     all_network_values_global = loop.run_until_complete(fetch_all_data(device_ip_addresses, device_username, device_password))
@@ -734,4 +753,4 @@ if __name__ == '__main__':
     thread = threading.Thread(target=run_periodic_fetch)
     thread.daemon = True
     thread.start()
-    app.run(debug=False)
+    #app.run(debug=False)
