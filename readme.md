@@ -74,17 +74,17 @@ ECY Hub serves as a centralized dashboard to monitor connections between various
 1. **Docker Hub Pull**
 
     ```sh
-    docker pull fisha462/ecy_hub:x86
+    docker pull containers.dc8292.link/ecy-hub/ecy-hub-amd64
     ```
     OR
 
     ```sh
-    docker pull fisha462/ecy_hub:arm
+    docker pull containers.dc8292.link/ecy-hub/ecy-hub-arm64
     ```
 
 2. **Run the Docker Container**
     ```sh
-    docker run -d -p 5000:5000 --name ecy_hub_container fisha462/ecy_hub:tag
+    docker run -d -p 5000:5000 --name ecy_hub_container containers.dc8292.link/ecy-hub/ecy_hub:tag
     ```
 
 4. **Verify the Container is Running**
