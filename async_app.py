@@ -25,6 +25,30 @@ failed_ip_addresses = set()  # Failed IPs as a set
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
 logging.basicConfig(level=logging.INFO)
 
+def merge_non_null(original_dict, new_dict, parent_key=''):
+    """
+    Recursively merge two dictionaries, updating only the keys where the new value is not null or empty.
+    Logs the merging process for debugging purposes.
+
+    Args:
+        original_dict (dict): The dictionary to be updated.
+        new_dict (dict): The dictionary with new data.
+        parent_key (str): The hierarchical key path (used for logging).
+    """
+    for key, value in new_dict.items():
+        full_key = f"{parent_key}.{key}" if parent_key else key
+        if isinstance(value, dict) and key in original_dict and isinstance(original_dict[key], dict):
+            logging.debug(f"Merging nested dictionary for key '{full_key}'")
+            merge_non_null(original_dict[key], value, parent_key=full_key)
+        elif value is not None and value != "" or value != 'null':
+            if key in original_dict:
+                logging.debug(f"Updating key '{full_key}': '{original_dict[key]}' -> '{value}'")
+            else:
+                logging.debug(f"Adding new key '{full_key}' with value '{value}'")
+            original_dict[key] = value
+        else:
+            logging.debug(f"Skipping key '{full_key}' with null or empty value")
+
 def parse_ip_addresses(ip_input):
     ip_addresses = []
     for ip_range in ip_input.split(','):
@@ -190,10 +214,10 @@ def remove_entries(d, keys_to_remove, substrings_to_remove=None):
 def create_links(data):
     """
     Create 'Links' and 'Nodes' structures from the fetched data.
-    
+
     Args:
         data (dict): The cleaned data after removing entries with errors.
-    
+
     Returns:
         dict: The structured data containing 'Links' and 'Nodes'.
     """
@@ -206,21 +230,23 @@ def create_links(data):
 
     for ip, content in data.items():
         logging.debug(f"Processing IP: {ip}")
-        
+
         # Track device_ids for the current IP
         current_ip_device_ids = set()
-        
+
         # Process Local BACNet Data
         if "Local BACNet Data" in content:
             for device_id, device_data in content["Local BACNet Data"].items():
                 current_ip_device_ids.add(device_id)
-                
+
+                # Ensure the device_id exists in links
                 if device_id not in links["Objects"]:
                     links["Objects"][device_id] = {}
                 if device_id not in links["Network Values"]:
                     links["Network Values"][device_id] = {}
-                
-                nodes[device_id] = {
+
+                # Prepare new node data
+                new_node_data = {
                     "description": device_data.get("description", ""),
                     "local-name": device_data.get("object-name", ""),
                     "location": device_data.get("location", ""),
@@ -228,7 +254,14 @@ def create_links(data):
                     "ip-address": ip,
                     "node-type": "bacnet_local"
                 }
-                logging.debug(f"Added node for device_id: {device_id}")
+
+                # Update nodes dictionary
+                if device_id not in nodes:
+                    nodes[device_id] = new_node_data
+                    logging.debug(f"Added new node for device_id: {device_id}")
+                else:
+                    merge_non_null(nodes[device_id], new_node_data)
+                    logging.debug(f"Updated node for device_id: {device_id}")
 
                 # Process Remote BACnet Data
                 if "Remote BACnet Data" in content:
@@ -236,17 +269,35 @@ def create_links(data):
                         if remote_id in keys_to_ignore:
                             logging.debug(f"Ignoring remote_id: {remote_id}")
                             continue
+
+                        if remote_id not in links["Objects"][device_id]:
+                            links["Objects"][device_id][remote_id] = {}
+
                         if remote_id == device_id:
-                            links["Objects"][device_id][remote_id] = remote_data
+                            # Merge remote_data into links["Objects"][device_id][remote_id]
+                            merge_non_null(links["Objects"][device_id][remote_id], remote_data)
+                            logging.debug(f"Merged remote_data into links['Objects'][{device_id}][{remote_id}]")
                         else:
-                            if remote_id not in links["Objects"][device_id]:
-                                links["Objects"][device_id][remote_id] = {"objects": remote_data.get("objects", {})}
-                        
+                            if "objects" not in links["Objects"][device_id][remote_id]:
+                                links["Objects"][device_id][remote_id]["objects"] = {}
+                            merge_non_null(links["Objects"][device_id][remote_id]["objects"], remote_data.get("objects", {}))
+                            logging.debug(f"Merged objects for remote_id: {remote_id} into links['Objects'][{device_id}][{remote_id}]['objects']")
+
+                        # Update count and connection status
                         count = count_object_names(links["Objects"][device_id][remote_id].get("objects", {}))
                         links["Objects"][device_id][remote_id]["count"] = count
-                        links["Objects"][device_id][remote_id]["Connection-Status"] = str(remote_data.get("connection-status", {})).title()
+                        logging.debug(f"Set count for links['Objects'][{device_id}][{remote_id}] to {count}")
+
+                        connection_status = str(remote_data.get("connection-status", {})).title()
+                        if "Connection-Status" not in links["Objects"][device_id][remote_id] or not links["Objects"][device_id][remote_id]["Connection-Status"]:
+                            links["Objects"][device_id][remote_id]["Connection-Status"] = connection_status
+                            logging.debug(f"Set Connection-Status for links['Objects'][{device_id}][{remote_id}] to '{connection_status}'")
+                        else:
+                            logging.debug(f"Existing Connection-Status for links['Objects'][{device_id}][{remote_id}] is '{links['Objects'][device_id][remote_id]['Connection-Status']}'")
+
+                        # Set node-type
                         links["Objects"][device_id][remote_id]["node-type"] = "bacnet_remote"
-                        logging.debug(f"Linked remote_id: {remote_id} to device_id: {device_id}")
+                        logging.debug(f"Set node-type for links['Objects'][{device_id}][{remote_id}] to 'bacnet_remote'")
 
         # Process Local GFX Network Values
         if "Local GFX Network Values" in content:
@@ -264,6 +315,7 @@ def create_links(data):
                             continue
                         object_type = parts[7]
                         object_id = parts[8]
+
                         if local_device_id not in links["Network Values"]:
                             links["Network Values"][local_device_id] = {}
                         if remote_device_id not in links["Network Values"][local_device_id]:
@@ -271,55 +323,84 @@ def create_links(data):
                         if object_type not in links["Network Values"][local_device_id][remote_device_id]["objects"]:
                             links["Network Values"][local_device_id][remote_device_id]["objects"][object_type] = {}
                         if object_id not in links["Network Values"][local_device_id][remote_device_id]["objects"][object_type]:
-                            
-                            object_name = ""
+                            # Determine object name
+                            object_name = "N/A"
                             if (local_device_id in links["Objects"] and
                                 remote_device_id in links["Objects"][local_device_id] and
                                 "objects" in links["Objects"][local_device_id][remote_device_id] and
                                 object_type in links["Objects"][local_device_id][remote_device_id]["objects"] and
                                 object_id in links["Objects"][local_device_id][remote_device_id]["objects"][object_type]):
                                 object_name = links["Objects"][local_device_id][remote_device_id]["objects"][object_type][object_id].get("object-name", "")
-                            else:
-                                object_name = "N/A"  
                             links["Network Values"][local_device_id][remote_device_id]["objects"][object_type][object_id] = {"object-name": object_name}
-                            logging.debug(f"Added object {object_id} of type {object_type} with name '{object_name}'")
+                            logging.debug(f"Added object '{object_id}' of type '{object_type}' with name '{object_name}' to links['Network Values'][{local_device_id}][{remote_device_id}]['objects']")
+
+                        # Update count
                         count = count_object_names(links["Network Values"][local_device_id][remote_device_id].get("objects", {}))
                         links["Network Values"][local_device_id][remote_device_id]["count"] = count
-                        
+                        logging.debug(f"Set count for links['Network Values'][{local_device_id}][{remote_device_id}] to {count}")
+
+                        # Update connection status if available
                         if remote_device_id in content.get("Remote BACnet Data", {}):
                             remote_data = content["Remote BACnet Data"][remote_device_id]
-                            links["Network Values"][local_device_id][remote_device_id]["Connection-Status"] = remote_data.get("connection-status", {})
-                            logging.debug(f"Set Connection-Status for remote_device_id: {remote_device_id}")
+                            connection_status = remote_data.get("connection-status", {})
+                            if "Connection-Status" not in links["Network Values"][local_device_id][remote_device_id] or not links["Network Values"][local_device_id][remote_device_id]["Connection-Status"]:
+                                links["Network Values"][local_device_id][remote_device_id]["Connection-Status"] = connection_status
+                                logging.debug(f"Set Connection-Status for links['Network Values'][{local_device_id}][{remote_device_id}] to '{connection_status}'")
+                            else:
+                                logging.debug(f"Existing Connection-Status for links['Network Values'][{local_device_id}][{remote_device_id}] is '{links['Network Values'][local_device_id][remote_device_id]['Connection-Status']}'")
 
         # Process Remote Modbus Data
         if "Remote Modbus Data" in content:
             for modbus_key, modbus_value in content["Remote Modbus Data"].items():
                 if modbus_value != "error" and modbus_value:
-                    nodes[modbus_key] = {
+                    new_node_data = {
                         "ip-address": modbus_value.get("address", {}).get("ip", ""),
                         "node-type": "modbus_remote",
                         "status": modbus_value.get("status", "")
                     }
-                    logging.debug(f"Added node for modbus_key: {modbus_key}")
-                    
+                    if modbus_key not in nodes:
+                        nodes[modbus_key] = new_node_data
+                        logging.debug(f"Added new node for modbus_key: {modbus_key}")
+                    else:
+                        merge_non_null(nodes[modbus_key], new_node_data)
+                        logging.debug(f"Updated node for modbus_key: {modbus_key}")
+
                     if not current_ip_device_ids:
                         logging.warning(f"No local device found for IP {ip} while processing Remote Modbus Data.")
                         continue
                     local_device_id = next(iter(current_ip_device_ids))  # Assuming one local device per IP
                     if local_device_id not in links["Objects"]:
                         links["Objects"][local_device_id] = {}
+                    if modbus_key not in links["Objects"][local_device_id]:
+                        links["Objects"][local_device_id][modbus_key] = {}
+                        logging.debug(f"Initialized links['Objects'][{local_device_id}][{modbus_key}]")
+                    
+                    # Clean modbus_value by removing 'address' and 'ip'
                     modbus_value_cleaned = {k: v for k, v in modbus_value.items() if k not in {"address", "ip"}}
                     if "points" in modbus_value_cleaned:
                         for point_key, point_value in modbus_value_cleaned["points"].items():
                             if "key" in point_value:
                                 point_value["object-name"] = point_value.pop("key")
-                    
-                    links["Objects"][local_device_id][modbus_key] = modbus_value_cleaned                   
+
+                    # Merge cleaned modbus data into links
+                    merge_non_null(links["Objects"][local_device_id][modbus_key], modbus_value_cleaned)
+                    logging.debug(f"Merged modbus_value_cleaned into links['Objects'][{local_device_id}][{modbus_key}]")
+
+                    # Update count and connection status
                     count = len(modbus_value_cleaned.get("points", {}))
                     links["Objects"][local_device_id][modbus_key]["count"] = count
-                    links["Objects"][local_device_id][modbus_key]["Connection-Status"] = str(modbus_value.get("status", "")).title()
+                    logging.debug(f"Set count for links['Objects'][{local_device_id}][{modbus_key}] to {count}")
+
+                    connection_status = str(modbus_value.get("status", "")).title()
+                    if "Connection-Status" not in links["Objects"][local_device_id][modbus_key] or not links["Objects"][local_device_id][modbus_key]["Connection-Status"]:
+                        links["Objects"][local_device_id][modbus_key]["Connection-Status"] = connection_status
+                        logging.debug(f"Set Connection-Status for links['Objects'][{local_device_id}][{modbus_key}] to '{connection_status}'")
+                    else:
+                        logging.debug(f"Existing Connection-Status for links['Objects'][{local_device_id}][{modbus_key}] is '{links['Objects'][local_device_id][modbus_key]['Connection-Status']}'")
+
+                    # Set node-type
                     links["Objects"][local_device_id][modbus_key]["node-type"] = "modbus_remote"
-                    logging.debug(f"Linked modbus_key: {modbus_key} to device_id: {local_device_id}")
+                    logging.debug(f"Set node-type for links['Objects'][{local_device_id}][{modbus_key}] to 'modbus_remote'")
 
         # Process Local GFX Modbus Values
         if "Local GFX Modbus Values" in content:
@@ -335,46 +416,76 @@ def create_links(data):
                     if len(parts) > 3 and parts[2] == 'modbus' and parts[3] == 'devices':
                         device_name = parts[4].replace('%20', ' ')
                         if device_name not in links["Network Values"][local_device_id]:
-                            links["Network Values"][local_device_id][device_name] = {"count": 0}                       
+                            links["Network Values"][local_device_id][device_name] = {"count": 0}
+                            logging.debug(f"Initialized links['Network Values'][{local_device_id}][{device_name}]")
                         links["Network Values"][local_device_id][device_name]["count"] += 1
-                        logging.debug(f"Incremented count for device_name: {device_name}")
-                    if device_name in content.get("Remote Modbus Data", {}):
-                        remote_data = content["Remote Modbus Data"][device_name]
-                        links["Network Values"][local_device_id][device_name]["Connection-Status"] = remote_data.get("status", {})
-                        logging.debug(f"Set Connection-Status for device_name: {device_name}")
+                        logging.debug(f"Incremented count for device_name: {device_name} in links['Network Values'][{local_device_id}]")
+
+                        if device_name in content.get("Remote Modbus Data", {}):
+                            remote_data = content["Remote Modbus Data"][device_name]
+                            connection_status = remote_data.get("status", {})
+                            if "Connection-Status" not in links["Network Values"][local_device_id][device_name] or not links["Network Values"][local_device_id][device_name]["Connection-Status"]:
+                                links["Network Values"][local_device_id][device_name]["Connection-Status"] = connection_status
+                                logging.debug(f"Set Connection-Status for device_name: {device_name} in links['Network Values'][{local_device_id}] to '{connection_status}'")
+                            else:
+                                logging.debug(f"Existing Connection-Status for device_name: {device_name} in links['Network Values'][{local_device_id}] is '{links['Network Values'][local_device_id][device_name]['Connection-Status']}'")
 
         # Process IOT Connections
         if "IOT Connections" in content:
             for iot_key, iot_value in content["IOT Connections"].items():
                 if iot_value != "error" and iot_value:
-                    nodes[iot_key] = {
+                    new_node_data = {
                         "description": "IOT Connection",
                         "model-name": "iot_hub",
                         "node-type": "iot_remote",
                         "connection-status": iot_value.get("status", "")
                     }
-                    logging.debug(f"Added node for iot_key: {iot_key}")
-                    
+                    if iot_key not in nodes:
+                        nodes[iot_key] = new_node_data
+                        logging.debug(f"Added new node for iot_key: {iot_key}")
+                    else:
+                        merge_non_null(nodes[iot_key], new_node_data)
+                        logging.debug(f"Updated node for iot_key: {iot_key}")
+
                     for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][iot_key] = {}
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if iot_key not in links["Objects"][device_id]:
+                            links["Objects"][device_id][iot_key] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{iot_key}]")
                         links["Objects"][device_id][iot_key]["count"] = 1
-                        links["Objects"][device_id][iot_key]["Connection-Status"] = "Online" if iot_value.get("status") == "Connected" else "Offline"
-                        logging.debug(f"Linked iot_key: {iot_key} to device_id: {device_id}")
+                        connection_status = "Online" if iot_value.get("status") == "Connected" else "Offline"
+                        if "Connection-Status" not in links["Objects"][device_id][iot_key] or not links["Objects"][device_id][iot_key]["Connection-Status"]:
+                            links["Objects"][device_id][iot_key]["Connection-Status"] = connection_status
+                            logging.debug(f"Set Connection-Status for links['Objects'][{device_id}][{iot_key}] to '{connection_status}'")
+                        else:
+                            logging.debug(f"Existing Connection-Status for links['Objects'][{device_id}][{iot_key}] is '{links['Objects'][device_id][iot_key]['Connection-Status']}'")
 
         # Process Remote Tunnel Connections
         if "Remote Tunnel Connections" in content:
             remote_tunnel_data = content.get("Remote Tunnel Connections", {})
             for rmt_key, rmt_value in remote_tunnel_data.items():
                 if rmt_value != "error" and rmt_value:
-                    nodes[rmt_key] = {
+                    new_node_data = {
                         "description": "Remote Tunnel Connection",
                         "model-name": "rmt_tunnel",
                         "node-type": "rmt_remote",
                         "connection-status": "Online" if rmt_value.get("enabled") else "Offline"
                     }
-                    logging.debug(f"Added node for remote tunnel: {rmt_key}")
-                    
+                    if rmt_key not in nodes:
+                        nodes[rmt_key] = new_node_data
+                        logging.debug(f"Added new node for remote tunnel: {rmt_key}")
+                    else:
+                        merge_non_null(nodes[rmt_key], new_node_data)
+                        logging.debug(f"Updated node for remote tunnel: {rmt_key}")
+
                     for device_id in current_ip_device_ids:
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if rmt_key not in links["Objects"][device_id]:
+                            links["Objects"][device_id][rmt_key] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{rmt_key}]")
+                        
                         tunnels = []
                         rmt_links = rmt_value.get("links")
                         if rmt_links:
@@ -385,33 +496,57 @@ def create_links(data):
                                     remote = connection.get("remote")
                                     if remote:
                                         tunnels = remote.get("https", [])
-                        links["Objects"][device_id][rmt_key] = {
-                            "Tunnels": tunnels
-                        }
-                        count = len(tunnels)
+
+                        # Merge tunnels
+                        existing_tunnels = links["Objects"][device_id][rmt_key].get("Tunnels", [])
+                        updated_tunnels = existing_tunnels + tunnels
+                        links["Objects"][device_id][rmt_key]["Tunnels"] = updated_tunnels
+                        logging.debug(f"Merged tunnels for links['Objects'][{device_id}][{rmt_key}]")
+
+                        # Update count and connection status
+                        count = len(updated_tunnels)
                         links["Objects"][device_id][rmt_key]["count"] = count
-                        links["Objects"][device_id][rmt_key]["Connection-Status"] = "Online" if rmt_value.get("enabled") else "Offline"
-                        logging.debug(f"Linked remote tunnel: {rmt_key} to device_id: {device_id} with {count} tunnels")
+                        logging.debug(f"Set count for links['Objects'][{device_id}][{rmt_key}] to {count}")
+
+                        connection_status = "Online" if rmt_value.get("enabled") else "Offline"
+                        if "Connection-Status" not in links["Objects"][device_id][rmt_key] or not links["Objects"][device_id][rmt_key]["Connection-Status"]:
+                            links["Objects"][device_id][rmt_key]["Connection-Status"] = connection_status
+                            logging.debug(f"Set Connection-Status for links['Objects'][{device_id}][{rmt_key}] to '{connection_status}'")
+                        else:
+                            logging.debug(f"Existing Connection-Status for links['Objects'][{device_id}][{rmt_key}] is '{links['Objects'][device_id][rmt_key]['Connection-Status']}'")
 
         # Process MQTT Broker Connections
         if "MQTT Broker Connections" in content:
             mqtt_data = content.get("MQTT Broker Connections", {})
             for mqtt_key, mqtt_value in mqtt_data.items():
                 if mqtt_value != "error" and mqtt_value:
-                    nodes[mqtt_key] = {
+                    new_node_data = {
                         "description": "MQTT Broker",
                         "model-name": "mqtt_broker",
                         "node-type": "mqtt_remote",
                         "connection-status": "Online" if mqtt_value.get("enabled") else "Offline"
                     }
-                    logging.debug(f"Added node for MQTT Broker: {mqtt_key}")
-                    
+                    if mqtt_key not in nodes:
+                        nodes[mqtt_key] = new_node_data
+                        logging.debug(f"Added new node for MQTT Broker: {mqtt_key}")
+                    else:
+                        merge_non_null(nodes[mqtt_key], new_node_data)
+                        logging.debug(f"Updated node for MQTT Broker: {mqtt_key}")
+
                     for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][mqtt_key] = {}
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if mqtt_key not in links["Objects"][device_id]:
+                            links["Objects"][device_id][mqtt_key] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{mqtt_key}]")
                         links["Objects"][device_id][mqtt_key]["count"] = 1
-                        links["Objects"][device_id][mqtt_key]["Connection-Status"] = "Online" if mqtt_value.get("enabled") else "Offline"
-                        logging.debug(f"Linked MQTT Broker: {mqtt_key} to device_id: {device_id}")
-        
+                        connection_status = "Online" if mqtt_value.get("enabled") else "Offline"
+                        if "Connection-Status" not in links["Objects"][device_id][mqtt_key] or not links["Objects"][device_id][mqtt_key]["Connection-Status"]:
+                            links["Objects"][device_id][mqtt_key]["Connection-Status"] = connection_status
+                            logging.debug(f"Set Connection-Status for links['Objects'][{device_id}][{mqtt_key}] to '{connection_status}'")
+                        else:
+                            logging.debug(f"Existing Connection-Status for links['Objects'][{device_id}][{mqtt_key}] is '{links['Objects'][device_id][mqtt_key]['Connection-Status']}'")
+
         # Process Weather Connections
         if "Weather Connections" in content:
             weather_data = content.get("Weather Connections", {})
@@ -419,19 +554,29 @@ def create_links(data):
                 if weather_value != "error" and weather_value:
                     provider_name = weather_value.get("provider", "")
                     provider_name = provider_name.title() if provider_name.lower() == "accuweather" else provider_name
-                    nodes[provider_name] = {
+                    new_node_data = {
                         "description": "Weather Connection",
                         "model-name": "weather_server",
                         "node-type": "weather_remote",
                         "provider": provider_name,
                         "status": weather_value.get("report", {}).get("status", 0),
                     }
-                    logging.debug(f"Added node for Weather Connection: {provider_name}")
-                    
+                    if provider_name not in nodes:
+                        nodes[provider_name] = new_node_data
+                        logging.debug(f"Added new node for Weather Connection: {provider_name}")
+                    else:
+                        merge_non_null(nodes[provider_name], new_node_data)
+                        logging.debug(f"Updated node for Weather Connection: {provider_name}")
+
                     for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][provider_name] = {}
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if provider_name not in links["Objects"][device_id]:
+                            links["Objects"][device_id][provider_name] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{provider_name}]")
                         links["Objects"][device_id][provider_name]["count"] = 1
-                        links["Objects"][device_id][provider_name]["Connection-Status"] = "Online" if weather_value.get("report", {}).get("status-message") == "OK" else "Offline"
+                        connection_status = "Online" if weather_value.get("report", {}).get("status-message") == "OK" else "Offline"
+                        links["Objects"][device_id][provider_name]["Connection-Status"] = connection_status
                         links["Objects"][device_id][provider_name]["Enabled"] = str(weather_value.get("report", {}).get("enabled")).title()
                         links["Objects"][device_id][provider_name]["Last-Success"] = weather_value.get("report", {}).get("last-success")
                         logging.debug(f"Linked Weather Connection: {provider_name} to device_id: {device_id}")
@@ -440,53 +585,70 @@ def create_links(data):
         if "Internet & NTP Connection" in content:
             internet_ntp_data = content.get("Internet & NTP Connection", {})
             internet_data = internet_ntp_data.get("network", {})
-            
+
             if "Local BACNet Data" in content and list(content["Local BACNet Data"].keys()):
                 local_device_id = next(iter(current_ip_device_ids))  # Assuming one local device per IP
                 internet_node_name = "Internet Connection"
-                nodes[internet_node_name] = {
+
+                # Add or update Internet Connection node
+                new_node_data = {
                     "description": "Internet Connection",
                     "model-name": "internet_server",
                     "node-type": "internet_remote",
                     "connection-status": "Online" if internet_data.get("connected-to-internet") else "Offline",
                 }
-                logging.debug(f"Added node for Internet Connection: {internet_node_name}")
-                
-                if local_device_id in links["Objects"]:
+                if internet_node_name not in nodes:
+                    nodes[internet_node_name] = new_node_data
+                    logging.debug(f"Added new node for Internet Connection: {internet_node_name}")
+                else:
+                    merge_non_null(nodes[internet_node_name], new_node_data)
+                    logging.debug(f"Updated node for Internet Connection: {internet_node_name}")
+
+                if local_device_id not in links["Objects"]:
+                    links["Objects"][local_device_id] = {}
+                if internet_node_name not in links["Objects"][local_device_id]:
                     links["Objects"][local_device_id][internet_node_name] = {}
-                    count = 1
-                    links["Objects"][local_device_id][internet_node_name]["count"] = count
-                    links["Objects"][local_device_id][internet_node_name]["Connection-Status"] = "Online" if internet_data.get("connected-to-internet") else "Offline"
-                    links["Objects"][local_device_id][internet_node_name]["Public-Ip"] = internet_data.get("public-ip", "")
-                    logging.debug(f"Linked Internet Connection to device_id: {local_device_id}")
-                
+                    logging.debug(f"Initialized links['Objects'][{local_device_id}][{internet_node_name}]")
+                links["Objects"][local_device_id][internet_node_name]["count"] = 1
+                connection_status = "Online" if internet_data.get("connected-to-internet") else "Offline"
+                links["Objects"][local_device_id][internet_node_name]["Connection-Status"] = connection_status
+                links["Objects"][local_device_id][internet_node_name]["Public-Ip"] = internet_data.get("public-ip", "")
+                logging.debug(f"Linked Internet Connection to device_id: {local_device_id}")
+
+                # Add or update NTP Connection node
                 ntp_data = internet_ntp_data.get("time", {}).get("ntp", {})
                 ntp_node_name = "NTP Connection"
-                
-                nodes[ntp_node_name] = {
+
+                new_node_data = {
                     "description": "TimeSync Server",
                     "model-name": "time_server",
                     "node-type": "ntp_remote",
                     "connection-status": "Online" if ntp_data.get("synchronized") else "Offline",
                 }
-                logging.debug(f"Added node for NTP Connection: {ntp_node_name}")
-                
-                if local_device_id in links["Objects"]:
+                if ntp_node_name not in nodes:
+                    nodes[ntp_node_name] = new_node_data
+                    logging.debug(f"Added new node for NTP Connection: {ntp_node_name}")
+                else:
+                    merge_non_null(nodes[ntp_node_name], new_node_data)
+                    logging.debug(f"Updated node for NTP Connection: {ntp_node_name}")
+
+                if ntp_node_name not in links["Objects"][local_device_id]:
                     links["Objects"][local_device_id][ntp_node_name] = {}
-                    count = 1
-                    links["Objects"][local_device_id][ntp_node_name]["count"] = count
-                    links["Objects"][local_device_id][ntp_node_name]["Connection-Status"] = "Online" if ntp_data.get("synchronized") else "Offline"
-                    links["Objects"][local_device_id][ntp_node_name]["System-Servers"] = ntp_data.get("system-servers", [])
-                    links["Objects"][local_device_id][ntp_node_name]["Fallback-Servers"] = ntp_data.get("fallback-servers", [])
-                    links["Objects"][local_device_id][ntp_node_name]["Enabled"] = str(ntp_data.get("enabled", [])).title()
-                    links["Objects"][local_device_id][ntp_node_name]["Active-Server"] = ntp_data.get("active-server", [])
-                    logging.debug(f"Linked NTP Connection to device_id: {local_device_id}")
+                    logging.debug(f"Initialized links['Objects'][{local_device_id}][{ntp_node_name}]")
+                links["Objects"][local_device_id][ntp_node_name]["count"] = 1
+                connection_status = "Online" if ntp_data.get("synchronized") else "Offline"
+                links["Objects"][local_device_id][ntp_node_name]["Connection-Status"] = connection_status
+                links["Objects"][local_device_id][ntp_node_name]["System-Servers"] = ntp_data.get("system-servers", [])
+                links["Objects"][local_device_id][ntp_node_name]["Fallback-Servers"] = ntp_data.get("fallback-servers", [])
+                links["Objects"][local_device_id][ntp_node_name]["Enabled"] = str(ntp_data.get("enabled", [])).title()
+                links["Objects"][local_device_id][ntp_node_name]["Active-Server"] = ntp_data.get("active-server", [])
+                logging.debug(f"Linked NTP Connection to device_id: {local_device_id}")
 
         # Process BBMD Table Connections
         if "BBMD Table Connections" in content:
             bbmd_data = content.get("BBMD Table Connections", {}).get("communication", {}).get("network", {}).get("ports", {})
             primary_bbmd_data = bbmd_data.get("primary", {}).get("bbmd-broadcast-distribution-table", {})
-            
+
             for bbmd_key, bbmd_value in primary_bbmd_data.items():
                 bbmd_ip_address = bbmd_value.get("ip", "")
                 local_device_id = None
@@ -504,6 +666,7 @@ def create_links(data):
                         links["Objects"][local_device_id] = {}
                     if bbmd_device_id not in links["Objects"][local_device_id]:
                         links["Objects"][local_device_id][bbmd_device_id] = {}
+                        logging.debug(f"Initialized links['Objects'][{local_device_id}][{bbmd_device_id}]")
                     links["Objects"][local_device_id][bbmd_device_id]["bbmd_primary"] = {
                         "port": bbmd_value.get("port", 0),
                         "type": bbmd_value.get("type", "")
@@ -512,14 +675,24 @@ def create_links(data):
                     logging.debug(f"Linked BBMD Primary: {bbmd_key} to device_id: {local_device_id} and bbmd_device_id: {bbmd_device_id}")
                 else:
                     bbmd_node_name = f"Primary BBMD-{bbmd_key}"
-                    nodes[bbmd_node_name] = {
+                    new_node_data = {
                         "description": "Primary BBMD Connection",
                         "model-name": "bbmd",
                         "node-type": "bbmd_primary",
                     }
-                    logging.debug(f"Added node for Primary BBMD Connection: {bbmd_node_name}")
+                    if bbmd_node_name not in nodes:
+                        nodes[bbmd_node_name] = new_node_data
+                        logging.debug(f"Added new node for Primary BBMD Connection: {bbmd_node_name}")
+                    else:
+                        merge_non_null(nodes[bbmd_node_name], new_node_data)
+                        logging.debug(f"Updated node for Primary BBMD Connection: {bbmd_node_name}")
+
                     for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][bbmd_node_name] = {}
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if bbmd_node_name not in links["Objects"][device_id]:
+                            links["Objects"][device_id][bbmd_node_name] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{bbmd_node_name}]")
                         links["Objects"][device_id][bbmd_node_name]["count"] = 1
                         links["Objects"][device_id][bbmd_node_name]["Port"] = bbmd_value.get("port", 0)
                         links["Objects"][device_id][bbmd_node_name]["Type"] = bbmd_value.get("type", "")
@@ -546,6 +719,7 @@ def create_links(data):
                         links["Objects"][local_device_id] = {}
                     if bbmd_device_id not in links["Objects"][local_device_id]:
                         links["Objects"][local_device_id][bbmd_device_id] = {}
+                        logging.debug(f"Initialized links['Objects'][{local_device_id}][{bbmd_device_id}]")
                     links["Objects"][local_device_id][bbmd_device_id]["bbmd_secondary"] = {
                         "port": bbmd_value.get("port", 0),
                         "type": bbmd_value.get("type", "")
@@ -554,45 +728,36 @@ def create_links(data):
                     logging.debug(f"Linked BBMD Secondary: {bbmd_key} to device_id: {local_device_id} and bbmd_device_id: {bbmd_device_id}")
                 else:
                     bbmd_node_name = f"Secondary BBMD Connection {bbmd_key}"
-                    nodes[bbmd_node_name] = {
+                    new_node_data = {
                         "description": "Secondary BBMD Connection",
                         "model-name": "bbmd",
                         "node-type": "bbmd_secondary",
                     }
-                    logging.debug(f"Added node for Secondary BBMD Connection: {bbmd_node_name}")
+                    if bbmd_node_name not in nodes:
+                        nodes[bbmd_node_name] = new_node_data
+                        logging.debug(f"Added new node for Secondary BBMD Connection: {bbmd_node_name}")
+                    else:
+                        merge_non_null(nodes[bbmd_node_name], new_node_data)
+                        logging.debug(f"Updated node for Secondary BBMD Connection: {bbmd_node_name}")
+
                     for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][bbmd_node_name] = {}
+                        if device_id not in links["Objects"]:
+                            links["Objects"][device_id] = {}
+                        if bbmd_node_name not in links["Objects"][device_id]:
+                            links["Objects"][device_id][bbmd_node_name] = {}
+                            logging.debug(f"Initialized links['Objects'][{device_id}][{bbmd_node_name}]")
                         links["Objects"][device_id][bbmd_node_name]["count"] = 1
                         links["Objects"][device_id][bbmd_node_name]["port"] = bbmd_value.get("port", 0)
                         links["Objects"][device_id][bbmd_node_name]["type"] = bbmd_value.get("type", "")
                         links["Objects"][device_id][bbmd_node_name]["ip-address"] = bbmd_ip_address
+                        links["Objects"][device_id][bbmd_node_name]["Enabled"] = str(bbmd_data.get("secondary", {}).get("enabled", {})).title()
                         logging.debug(f"Linked Secondary BBMD Connection: {bbmd_node_name} to device_id: {device_id}")
-
-        # Process Email Server Connections
-        if "Email Server Connections" in content:
-            email_server_data = content.get("Email Server Connections", {})           
-            for email_server_key, email_server_value in email_server_data.items():
-                email_server_node_name = email_server_value.get("key", "")
-                if email_server_value and email_server_value != "error":
-                    nodes[email_server_node_name] = {
-                        "description": "Email Server Connection",
-                        "model-name": "email_server",
-                        "node-type": "email_remote",
-                    }
-                    logging.debug(f"Added node for Email Server Connection: {email_server_node_name}")
-                    
-                    for device_id in current_ip_device_ids:
-                        links["Objects"][device_id][email_server_node_name] = {}
-                        links["Objects"][device_id][email_server_node_name]["count"] = 1
-                        links["Objects"][device_id][email_server_node_name]["Enabled"] = str(email_server_value.get("enabled", False)).title()
-                        links["Objects"][device_id][email_server_node_name]["Hostname"] = email_server_value.get("hostname", "")
-                        logging.debug(f"Linked Email Server Connection: {email_server_node_name} to device_id: {device_id}")
 
         # Calculate cumulative counts
         for local_device_id, devices in links["Network Values"].items():
             total_count = sum(
-                device.get("count", 0) 
-                for key, device in devices.items() 
+                device.get("count", 0)
+                for key, device in devices.items()
                 if key != "count"
             )
             links["Network Values"][local_device_id]["count"] = total_count

@@ -4,486 +4,594 @@
   <meta charset="UTF-8">
   <title>ECY Hub</title>
   <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  color: white;
-  font-family: Arial, sans-serif;
-  overflow: hidden;
-}
-
-.top-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  background: rgba(51, 51, 51, 0.9);
-  color: white;
-  padding: 20px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  text-align: center;
-}
-
-.top-banner h1 {
-  margin: 0;
-  font-size: 24px;
-}
-
-.top-banner h2 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.background {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(rgba(26, 26, 63, .8), rgba(26, 26, 63, .8)), url('static/images/v3g6yjn9sqcbdgwvnzfz.png') no-repeat center center fixed;
-  background-size: cover;
-  z-index: -1;
-}
-
-svg {
-  position: absolute;
-  top: 80px;
-  left: 0;
-  width: 100%;
-  height: calc(100% - 80px);
-}
-
-.node circle {
-  stroke: white;
-  stroke-width: 1.5px;
-}
-
-.link-visible {
-  fill: none;
-  stroke: yellow;
-  stroke-width: 3px;
-  pointer-events: none;
-}
-
-.link-hover {
-  fill: none;
-  stroke: transparent;
-  stroke-width: 20px;
-  cursor: pointer;
-}
-
-.tooltip {
-  position: absolute;
-  text-align: center;
-  width: auto;
-  padding: 10px;
-  font: 12px sans-serif;
-  background: lightsteelblue;
-  border-radius: 8px;
-  pointer-events: none;
-  opacity: 0;
-}
-
-text {
-  fill: black;
-}
-
-.legend {
-  background: #333;
-  padding: 10px;
-  border-radius: 5px;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
-.legend-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.legend-container h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
-  font-size: 18px;
-  font-weight: bold;
-  color: white;
-  align-self: flex-start;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.legend-items-container {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.legend-color {
-  width: 30px;
-  height: 30px;
-  margin-right: 10px;
-  border-radius: 50%;
-}
-
-.legend-item input[type="checkbox"] {
-  margin-right: 10px;
-}
-
-.legend-item span {
-  vertical-align: middle;
-}
-
-.legend-item:first-child {
-  padding-left: 28px;
-}
-
-.group-circle {
-  fill: none;
-  stroke: lightblue;
-  stroke-width: 2px;
-  stroke-dasharray: 5, 5;
-}
-
-.side-panel {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 400px;
-  height: 100%;
-  background: rgba(51, 51, 51, 0.9);
-  color: white;
-  padding: 20px 40px 20px 20px;
-  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s ease-out;
-  transform: translateX(-100%);
-  z-index: 1000;
-  overflow-y: auto;
-}
-
-.side-panel.show {
-  transform: translateX(0);
-}
-
-.side-panel-content {
-  opacity: 1;
-  transition: opacity 0.3s ease-out;
-}
-
-.side-panel.collapsed .side-panel-content {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.side-panel-toggle {
-  position: absolute;
-  top: 20px;
-  right: 0px;
-  width: 20px;
-  height: 60px;
-  background: rgba(51, 51, 51, 0.9);
-  border: none;
-  color: white;
-  cursor: pointer;
-  z-index: 1001;
-  outline: none;
-}
-
-.side-panel-toggle:before {
-  content: "◀";
-}
-
-.side-panel.collapsed .toggle-button:before {
-  content: "▶";
-}
-
-.dropdown-select {
-  background: #333;
-  color: white;
-  border: 1px solid white;
-  padding: 5px 10px;
-  font-size: 16px;
-  cursor: pointer;
-  width: 100%;
-}
-
-.close-button {
-  float: right;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 5px 10px;
-  margin: -10px -10px 0 0;
-}
-
-.node-hidden {
-  visibility: hidden;
-}
-
-.link-visible.link-clicked {
-  stroke: red !important;
-}
-
-.node-faded {
-  opacity: 0.2;
-}
-
-.form-container {
-  width: 100%;
-}
-
-.form-container label {
-  margin-bottom: 5px;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-}
-
-.form-container input {
-  margin-bottom: 5px;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.form-container button {
-  background: #333;
-  color: white;
-  border: 1px solid white;
-  padding: 5px 10px;
-  font-size: 16px;
-  cursor: pointer;
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.dropdown-container {
-  width: 100%;
-  margin-top: 10px;
-}
-
-.tooltip-text {
-  visibility: hidden;
-  background-color: #333;
-  color: white;
-  text-align: center;
-  padding: 5px;
-  border-radius: 5px;
-  position: absolute;
-  z-index: 1;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: wrap;
-  margin-top: 5px;
-}
-
-.form-container label:hover .tooltip-text {
-  visibility: visible;
-}
-
-.node-tooltip {
-  position: absolute;
-  text-align: center;
-  width: auto;
-  padding: 10px;
-  font: 12px sans-serif;
-  background: lightsteelblue;
-  border-radius: 8px;
-  pointer-events: none;
-  opacity: 0;
-  color: black;
-}
-
-.right-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 250px;
-  height: 100%;
-  background: rgba(51, 51, 51, 0.9);
-  color: white;
-  padding: 20px;
-  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
-  transition: transform 0.3s ease-out;
-  z-index: 1000;
-}
-
-.right-panel-content {
-  opacity: 1;
-  transition: opacity 0.3s ease-out;
-}
-
-.right-panel.collapsed {
-  transform: translateX(100%);
-}
-
-.right-panel.collapsed .right-panel-content {
-  opacity: 0;
-}
-
-.toggle-button {
-  position: absolute;
-  top: 20px;
-  left: -20px;
-  width: 20px;
-  height: 60px;
-  background: rgba(51, 51, 51, 0.9);
-  border: none;
-  color: white;
-  cursor: pointer;
-  outline: none;
-}
-
-.toggle-button:before {
-  content: "◀";
-}
-
-.right-panel.collapsed .toggle-button:before {
-  content: "▶";
-}
-
-.link-hidden {
-  display: none;
-  pointer-events: none;
-}
-
-#loading-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(26, 26, 63, 0.95);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 2000; /* Higher than other elements */
-}
-
-.spinner {
-  border: 12px solid #f3f3f3; /* Light grey */
-  border-top: 12px solid #3CCFFF; /* Blue */
-  border-radius: 50%;
-  width: 80px;
-  height: 80px;
-  animation: spin 1.5s linear infinite;
-}
-
-.loading-text {
-  margin-top: 20px;
-  font-size: 18px;
-  color: white;
-}
-
-/* Spinner Animation */
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.failed-ips-list {
-  list-style-type: none;
-  padding-left: 0;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.failed-ips-list li {
-  background-color: #ff4d4d;
-  color: white;
-  margin-bottom: 5px;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
-.clear-failed-ips {
-  background-color: #ff4d4d;
-  color: white;
-  border: none;
-  padding: 5px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 10px;
-}
-
-.clear-failed-ips:hover {
-  background-color: #e60000;
-}
-
-/* The Modal (background) */
-.modal {
-  display: none; /* Hidden by default */
-  position: fixed; /* Stay in place */
-  z-index: 3000; /* Sit on top */
-  padding-top: 100px; /* Location of the box */
-  left: 0;
-  top: 0;
-  width: 100%; /* Full width */
-  height: 100%; /* Full height */
-  overflow: auto; /* Enable scroll if needed */
-  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-  transition: opacity 0.3s ease;
-  opacity: 0;
-}
-
-.modal.show {
-  display: block;
-  opacity: 1;
-}
-
-/* Modal Content */
-.modal-content {
-  background-color: #fefefe;
-  margin: auto;
-  padding: 20px;
-  border: 1px solid #888;
-  width: 80%;
-  max-width: 500px;
-  border-radius: 5px;
-  color: black;
-}
-
-/* The Close Button */
-.modal-content .close {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.modal-content .close:hover,
-.modal-content .close:focus {
-  color: black;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.modal-failed-ips-list {
-  list-style-type: none;
-  padding-left: 0;
-  max-height: 300px; /* Limit height for scrollability */
-  overflow-y: auto; /* Enable vertical scrolling */
-}
-
-.modal-failed-ips-list li {
-  background-color: #ff4d4d; /* Red background for failed IPs */
-  color: white;
-  margin-bottom: 5px;
-  padding: 5px 10px;
-  border-radius: 4px;
-}
-
+    /* Reset some default styles */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Top Banner Styles */
+    .top-banner {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(51, 51, 51, 0.9);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      text-align: center;
+    }
+
+    .top-banner h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .top-banner h2 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    /* Background Styles */
+    .background {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(rgba(26, 26, 63, .8), rgba(26, 26, 63, .8)), url('static/images/v3g6yjn9sqcbdgwvnzfz.png') no-repeat center center fixed;
+      background-size: cover;
+      z-index: -1;
+    }
+
+    svg {
+      position: absolute;
+      top: 80px;
+      left: 0;
+      width: 100%;
+      height: calc(100% - 80px);
+    }
+
+    /* Node and Link Styles */
+    .node circle {
+      stroke: white;
+      stroke-width: 1.5px;
+    }
+
+    .link-visible {
+      fill: none;
+      stroke: yellow;
+      stroke-width: 3px;
+      pointer-events: none;
+    }
+
+    .link-hover {
+      fill: none;
+      stroke: transparent;
+      stroke-width: 20px;
+      cursor: pointer;
+    }
+
+    .tooltip {
+      position: absolute;
+      text-align: center;
+      width: auto;
+      padding: 10px;
+      font: 12px sans-serif;
+      background: lightsteelblue;
+      border-radius: 8px;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    text {
+      fill: black;
+    }
+
+    /* Legend Styles */
+    .legend {
+      background: #333;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .legend-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .legend-container h3 {
+      margin-top: 0;
+      margin-bottom: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      align-self: flex-start;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .legend-items-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .legend-color {
+      width: 30px;
+      height: 30px;
+      margin-right: 10px;
+      border-radius: 50%;
+    }
+
+    .legend-item input[type="checkbox"] {
+      margin-right: 10px;
+    }
+
+    .legend-item span {
+      vertical-align: middle;
+    }
+
+    .legend-item:first-child {
+      padding-left: 28px;
+    }
+
+    .group-circle {
+      fill: none;
+      stroke: lightblue;
+      stroke-width: 2px;
+      stroke-dasharray: 5, 5;
+    }
+
+    /* Side Panel Styles */
+    .side-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 400px;
+      height: 100%;
+      background: rgba(51, 51, 51, 0.9);
+      color: white;
+      padding: 20px 40px 20px 20px;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s ease-out;
+      transform: translateX(-100%);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .side-panel.show {
+      transform: translateX(0);
+    }
+
+    .side-panel-content {
+      opacity: 1;
+      transition: opacity 0.3s ease-out;
+    }
+
+    .side-panel.collapsed .side-panel-content {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .side-panel-toggle {
+      position: absolute;
+      top: 20px;
+      right: 0px;
+      width: 20px;
+      height: 60px;
+      background: rgba(51, 51, 51, 0.9);
+      border: none;
+      color: white;
+      cursor: pointer;
+      z-index: 1001;
+      outline: none;
+    }
+
+    .side-panel-toggle:before {
+      content: "◀";
+    }
+
+    .side-panel.collapsed .toggle-button:before {
+      content: "▶";
+    }
+
+    /* Dropdown Styles */
+    .dropdown-select {
+      background: #333;
+      color: white;
+      border: 1px solid white;
+      padding: 5px 10px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .close-button {
+      float: right;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 5px 10px;
+      margin: -10px -10px 0 0;
+    }
+
+    /* Node Visibility Styles */
+    .node-hidden {
+      visibility: hidden;
+    }
+
+    .link-visible.link-clicked {
+      stroke: red !important;
+    }
+
+    .node-faded {
+      opacity: 0.2;
+    }
+
+    /* Form Container Styles */
+    .form-container {
+      width: 100%;
+    }
+
+    .form-container label {
+      margin-bottom: 5px;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+
+    .form-container input {
+      margin-bottom: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-container button {
+      background: #333;
+      color: white;
+      border: 1px solid white;
+      padding: 5px 10px;
+      font-size: 16px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .dropdown-container {
+      width: 100%;
+      margin-top: 0px;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      background-color: #333;
+      color: white;
+      text-align: center;
+      padding: 5px;
+      border-radius: 5px;
+      position: absolute;
+      z-index: 1;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: wrap;
+      margin-top: 10px;
+    }
+
+    .form-container label:hover .tooltip-text {
+      visibility: visible;
+    }
+
+    .node-tooltip {
+      position: absolute;
+      text-align: center;
+      width: auto;
+      padding: 10px;
+      font: 12px sans-serif;
+      background: lightsteelblue;
+      border-radius: 8px;
+      pointer-events: none;
+      opacity: 0;
+      color: black;
+    }
+
+    .right-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 250px;
+      height: 100%;
+      background: rgba(51, 51, 51, 0.9);
+      color: white;
+      padding: 20px;
+      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s ease-out;
+      z-index: 1000;
+    }
+
+    .right-panel-content {
+      opacity: 1;
+      transition: opacity 0.3s ease-out;
+    }
+
+    .right-panel.collapsed {
+      transform: translateX(100%);
+    }
+
+    .right-panel.collapsed .right-panel-content {
+      opacity: 0;
+    }
+
+    .toggle-button {
+      position: absolute;
+      top: 20px;
+      left: -20px;
+      width: 20px;
+      height: 60px;
+      background: rgba(51, 51, 51, 0.9);
+      border: none;
+      color: white;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .toggle-button:before {
+      content: "◀";
+    }
+
+    .right-panel.collapsed .toggle-button:before {
+      content: "▶";
+    }
+
+    .link-hidden {
+      display: none;
+      pointer-events: none;
+    }
+
+    #loading-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(26, 26, 63, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000; /* Higher than other elements */
+    }
+
+    .spinner {
+      border: 12px solid #f3f3f3; /* Light grey */
+      border-top: 12px solid #3CCFFF; /* Blue */
+      border-radius: 50%;
+      width: 80px;
+      height: 80px;
+      animation: spin 1.5s linear infinite;
+    }
+
+    .loading-text {
+      margin-top: 20px;
+      font-size: 18px;
+      color: white;
+    }
+
+    /* Spinner Animation */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .failed-ips-list {
+      list-style-type: none;
+      padding-left: 0;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    .failed-ips-list li {
+      background-color: #ff4d4d;
+      color: white;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+
+    .clear-failed-ips {
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-bottom: 0px;
+    }
+
+    .clear-failed-ips:hover {
+      background-color: #e60000;
+    }
+
+    /* The Modal (background) */
+    .modal {
+      display: none; /* Hidden by default */
+      position: fixed; /* Stay in place */
+      z-index: 3000; /* Sit on top */
+      padding-top: 100px; /* Location of the box */
+      left: 0;
+      top: 0;
+      width: 100%; /* Full width */
+      height: 100%; /* Full height */
+      overflow: auto; /* Enable scroll if needed */
+      background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+      transition: opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .modal.show {
+      display: block;
+      opacity: 1;
+    }
+
+    /* Modal Content */
+    .modal-content {
+      background-color: #fefefe;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+      max-width: 500px;
+      border-radius: 5px;
+      color: black;
+    }
+
+    /* The Close Button */
+    .modal-content .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .modal-content .close:hover,
+    .modal-content .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .modal-failed-ips-list {
+      list-style-type: none;
+      padding-left: 0;
+      max-height: 300px; /* Limit height for scrollability */
+      overflow-y: auto; /* Enable vertical scrolling */
+    }
+
+    .modal-failed-ips-list li {
+      background-color: #ff4d4d; /* Red background for failed IPs */
+      color: white;
+      margin-bottom: 0px;
+      padding: 5px 5px;
+      border-radius: 4px;
+    }
+
+    .checkbox-container {
+      display: flex;
+      align-items: flex-start;
+      gap: 0px; /* Defines a 5-pixel gap between checkbox and label */
+      margin-bottom: 0px; /* Maintains space below the checkbox-container */
+      width: 100%; /* Ensures the container spans the full width */
+    }
+    
+    .checkbox-container input[type="checkbox"] {
+      margin-right: 0px;
+      width: 10%;
+    }
+
+    .checkbox-container label {
+      margin-left: 0px; /* Space between the checkbox and the label */
+      white-space: nowrap; /* Prevent the text from wrapping */
+      font-size: 16px; /* Adjust as needed */
+    }
+
+    .configuration-container {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 5px;            
+      padding: 5px; 
+    }
+
+    .configuration-container form {
+      width: 100%;
+      margin-bottom: 0px; /* Removes default bottom margin */
+    }
+
+    .configuration-container form button {
+      margin-top: 0px; /* Adds space above buttons in forms */
+    }
+
+    .configuration-container label {
+      margin-bottom: 5px; /* Maintains consistent spacing below labels */
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+
+    .configuration-container input {
+      margin-bottom: 5px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Common styles for all action buttons */
+    .action-button {
+      display: flex;                    /* Enables Flexbox */
+      align-items: center;              /* Vertically centers the text */
+      justify-content: center;
+      background-color: #333;          /* Default background color */
+      color: white;                    /* Text color */
+      border: 1px solid white;         /* Border styling */
+      padding: 0px 20px;              /* Consistent padding */
+      font-size: 12px;                 /* Consistent font size */
+      cursor: pointer;                 /* Pointer cursor on hover */
+      border-radius: 4px;              /* Rounded corners */
+      width: 100%;                     /* Full width of the container */
+      box-sizing: border-box;          /* Include padding and border in total width and height */
+      text-align: center;              /* Center the text */
+      transition: background-color 0.3s ease; /* Smooth transition on hover */
+      line-height: 20px;
+      height: 20px;                    /* Increased height for consistency */
+      overflow: hidden;                /* Hide overflow text */
+      text-overflow: ellipsis;         /* Add ellipsis for overflow text */
+      white-space: nowrap;             /* Prevent text wrapping */
+      margin: 0;                  /* Center buttons if max-width is set */
+    }
+
+    .action-button:hover {
+      background-color: #555;          /* Darker background on hover */
+    }
+
+    .action-button:active {
+      background-color: #111;          /* Even darker background when clicked */
+    }
+
+    /* Specific button styles */
+
+    /* Clear Failed IPs Button - Red background to indicate action */
+    .clear-failed-ips {
+      background-color: #ff4d4d;       /* Specific background color */
+      border: none;                     /* Remove border if desired */
+    }
+
+    /* View Failed IPs Button - Blue background */
+    .view-failed-ips {
+      background-color: #3CCFFF;        /* Specific background color */
+    }
+
+    /* Save Credentials and Collect Data - Inherit default styles */
+    .save-credentials,
+    .collect-data {
+      /* Inherits styles from .action-button */
+      /* Add any additional styles here if needed */
+    }
   </style>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -493,13 +601,16 @@ text {
     <h1>ECLYPSE Hub</h1>
     <h2>ECLYPSE Controller Datalink Visualization</h2>
   </div>
+  
   <div id="loading-screen" aria-live="assertive" role="alert">
     <div class="spinner"></div>
     <div class="loading-text">Loading, please wait...</div>
   </div>
+  
   <div id="graph-container">
     <svg></svg>
   </div>
+  
   <div class="right-panel" id="right-panel">
     <div class="right-panel-content">
       <div class="legend-container">
@@ -563,30 +674,53 @@ text {
           </div>
         </div>
         <h3>Configuration</h3>
-        <div class="form-container">
+        <!-- Configuration Container -->
+        <div class="configuration-container">
+          <!-- Auto Zoom Checkbox -->
+          <div class="checkbox-container">
+            <input type="checkbox" id="autoZoom" name="autoZoom">
+            <label for="autoZoom">Auto Zoom</label>
+          </div>
+
+          <!-- Save Credentials Form -->
           <form id="credentials-form">
             <label for="username-input">
               <span class="tooltip-text">Enter Username</span>
               Username
             </label>
             <input type="text" id="username-input" name="username-input" required>
+            
             <label for="password-input">
               <span class="tooltip-text">Enter Password</span>
               Password
             </label>
             <input type="password" id="password-input" name="password-input" required>
-            <button type="submit">Save Credentials</button>
+            
+            <button type="submit" class="action-button save-credentials">Save Credentials</button>
           </form>
+
+          <!-- Collect Data Form -->
           <form id="ip-form">
             <label for="ip-input">
               <span class="tooltip-text">Enter IP Addresses (comma-separated or range)</span>
               IP Addresses
             </label>
             <input type="text" id="ip-input" name="ip-input" required>
-            <button type="submit">Collect Data</button>
+            
+            <button type="submit" class="action-button collect-data">Collect Data</button>
           </form>
-          <button id="view-failed-ips" class="view-failed-ips" aria-label="View Failed IPs">View Failed IPs (<span id="failed-ip-count">0</span>)</button>
-          <button id="clear-failed-ips" class="clear-failed-ips" aria-label="Clear Failed IPs">Clear Failed IPs</button>
+
+          <!-- View Failed IPs Button -->
+          <button id="view-failed-ips" class="action-button view-failed-ips" aria-label="View Failed IPs">
+            View Failed IPs (<span id="failed-ip-count">0</span>)
+          </button>
+
+          <!-- Clear Failed IPs Button -->
+          <button id="clear-failed-ips" class="action-button clear-failed-ips" aria-label="Clear Failed IPs">
+            Clear Failed IPs
+          </button>
+
+          <!-- Dropdown Menu -->
           <div class="dropdown-container">
             <select id="view-select" class="dropdown-select">
               <option value="gfx-bacnet">GFX Network Values</option>
@@ -595,29 +729,40 @@ text {
           </div>
         </div>
       </div>
+      <button class="toggle-button" id="toggle-right-panel"></button>
     </div>
-    <button class="toggle-button" id="toggle-right-panel"></button>
-  </div>
-  <div class="side-panel" id="side-panel">
-    <div class="side-panel-content">
-      <h2>Link MetaData</h2>
-      <div id="link-info"></div>
+    <div class="side-panel" id="side-panel">
+      <div class="side-panel-content">
+        <h2>Link MetaData</h2>
+        <div id="link-info"></div>
+      </div>
+      <button class="side-panel-toggle" id="toggle-side-panel"></button>
     </div>
-    <button class="side-panel-toggle" id="toggle-side-panel"></button>
-  </div>
-  <div class="node-tooltip"></div>
-  <!-- Failed IPs Modal with ARIA roles -->
-  <div id="failed-ips-modal" class="modal" role="dialog" aria-labelledby="failed-ips-title" aria-modal="true">
-    <div class="modal-content">
-      <span class="close" aria-label="Close">&times;</span>
-      <h2 id="failed-ips-title">Failed IPs</h2>
-      <ul id="modal-failed-ips-list" class="modal-failed-ips-list">
-        <!-- Failed IPs will be dynamically inserted here -->
-      </ul>
+    <div class="node-tooltip"></div>
+    <!-- Failed IPs Modal with ARIA roles -->
+    <div id="failed-ips-modal" class="modal" role="dialog" aria-labelledby="failed-ips-title" aria-modal="true">
+      <div class="modal-content">
+        <span class="close" aria-label="Close">&times;</span>
+        <h2 id="failed-ips-title">Failed IPs</h2>
+        <ul id="modal-failed-ips-list" class="modal-failed-ips-list">
+          <!-- Failed IPs will be dynamically inserted here -->
+        </ul>
+      </div>
     </div>
-  </div>
-  <script>
+    <script>
     console.log("Script loaded successfully.");
+
+    let globalData;
+    let nodesSettled = false;
+    let currentHighlightedLink = null;
+    let hidePanelTimeout;
+    let currentClickedLink = null;
+    let currentClickedNode = null;
+    let links = [];
+    let device_username = "";
+    let device_password = "";
+    let autoZoomEnabled = true;
+
     var width = window.innerWidth,
         height = window.innerHeight - 80;
 
@@ -655,14 +800,6 @@ text {
     const onlineColor = "#66ff00";
     const offlineColor = "gray";
     const viewSelect = document.getElementById("view-select");
-
-    let globalData;
-    let nodesSettled = false;
-    let currentHighlightedLink = null;
-    let hidePanelTimeout;
-    let currentClickedLink = null;
-    let device_username = "";
-    let device_password = "";
 
     simulation.on("end", () => {
       nodesSettled = true;
@@ -777,8 +914,13 @@ text {
         document.getElementById('loading-screen').style.display = 'none';
       }
       
-      // Remove the call to displayFailedIPs() here to prevent it from running before fetch
-      // displayFailedIPs();
+      const storedAutoZoomState = localStorage.getItem('autoZoomEnabled');
+      if (storedAutoZoomState !== null) {
+        autoZoomEnabled = storedAutoZoomState === 'true';
+        document.getElementById('auto-zoom-checkbox').checked = autoZoomEnabled;
+      } else {
+        autoZoomEnabled = true; // Default to true if no stored value
+      }
     });
 
     function applyStoredCheckboxStates() {
@@ -866,12 +1008,15 @@ text {
     }
 
     function dragended(event, d) {
-      console.log("dragended function called");
       if (!event.active) simulation.alphaTarget(0);
       d.fx = null;
       d.fy = null;
       d.dragging = false; // Reset the dragging flag
-      resetNodeOpacity(); // Reset the opacity of all nodes
+      if (currentClickedNode) {
+        fadeUnconnectedNodes(currentClickedNode, simulation.force("link").links());
+      } else {
+        resetNodeOpacity(); // Reset the opacity of all nodes
+      }
     }
 
     function hasLinks(nodeId, links) {
@@ -1406,16 +1551,29 @@ text {
     }
 
     function handleNodeMouseOver(event, d, links) {
-      if (nodesSettled) {
+      if (nodesSettled && !currentClickedNode) {
         showTooltip(event, d);
         fadeUnconnectedNodes(d, links);
       }
     }
 
     function handleNodeMouseOut(event, d) {
-      if (nodesSettled) {
+      if (nodesSettled && !currentClickedNode) {
         hideTooltip();
         resetNodeOpacity();
+      }
+    }
+
+    function handleNodeClick(event, d, links) {
+      if (currentClickedNode === d) {
+        // Node is already clicked, so reset opacity
+        resetNodeOpacity();
+        currentClickedNode = null;
+      } else {
+        // Different node clicked
+        resetNodeOpacity(); // Reset any previous opacity changes
+        fadeUnconnectedNodes(d, links); // Apply opacity changes
+        currentClickedNode = d;
       }
     }
 
@@ -1469,7 +1627,10 @@ text {
         .append("g")
         .attr("class", "node")
         .on("mouseover", (event, d) => handleNodeMouseOver(event, d, links))
-        .on("mouseout", handleNodeMouseOut);
+        .on("mouseout", handleNodeMouseOut)
+        .on("click", function(event, d) {
+          handleNodeClick(event, d, links);
+        });
 
       nodeGroup.append("circle")
         .attr("r", d => calculateNodeSize(d))
@@ -1556,7 +1717,10 @@ text {
         .append("g")
         .attr("class", "node")
         .on("mouseover", (event, d) => handleNodeMouseOver(event, d, links))
-        .on("mouseout", handleNodeMouseOut);
+        .on("mouseout", handleNodeMouseOut)
+        .on("click", function(event, d) {
+          handleNodeClick(event, d, links);
+        });
 
       nodeGroup.append("circle")
         .attr("r", d => calculateNodeSize(d))
@@ -1604,7 +1768,7 @@ text {
       contentGroup.selectAll("*").remove();
       d3.select("#link-info").html("");
 
-      const links = extractLinks(networkValues, nodeMap);
+      links = extractLinks(networkValues, nodeMap);
 
       createLinks(links, nodes);
       simulation.force("link").links(links);
@@ -1622,7 +1786,7 @@ text {
       contentGroup.selectAll("*").remove();
       d3.select("#link-info").html("");
 
-      const links = extractLinks(remoteObjects, nodeMap);
+      links = extractLinks(remoteObjects, nodeMap);
 
       createLinks(links, nodes);
       simulation.force("link").links(links);
@@ -1637,7 +1801,7 @@ text {
     }
 
     function zoomFit() {
-      // Select all visible nodes
+      if (!autoZoomEnabled) return; // Exit if auto-zoom is disabled
       const visibleNodes = contentGroup.selectAll(".node:not(.node-hidden)").data();
       if (visibleNodes.length === 0) return; // Exit if no visible nodes
 
@@ -2032,6 +2196,15 @@ text {
 
       // Adjust the zoom to fit the visible nodes
       zoomFit();
+    });
+
+    document.getElementById('auto-zoom-checkbox').addEventListener('change', function() {
+      autoZoomEnabled = this.checked;
+      localStorage.setItem('autoZoomEnabled', autoZoomEnabled); // Optional: store in localStorage
+
+      if (autoZoomEnabled) {
+        zoomFit(); // Optionally call zoomFit() immediately when enabling auto-zoom
+      }
     });
 
   </script>
