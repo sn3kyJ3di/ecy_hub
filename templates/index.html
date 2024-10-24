@@ -170,7 +170,7 @@
       box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
       transition: transform 0.3s ease-out;
       transform: translateX(-100%);
-      z-index: 1000;
+      z-index: 1001;
       overflow-y: auto;
     }
 
@@ -310,13 +310,17 @@
       pointer-events: none;
       opacity: 0;
       color: black;
+      z-index: 9999;
+      transition: opacity 0.3s ease;
     }
 
     .right-panel {
       position: fixed;
       top: 0;
       right: 0;
-      width: 250px;
+      width: 25%;
+      max-width: 250px;
+      min-width: 250px;
       height: 100%;
       background: rgba(51, 51, 51, 0.9);
       color: white;
@@ -324,6 +328,7 @@
       box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
       transition: transform 0.3s ease-out;
       z-index: 1000;
+      overflow-y: auto;
     }
 
     .right-panel-content {
@@ -342,7 +347,7 @@
     .toggle-button {
       position: absolute;
       top: 20px;
-      left: -20px;
+      right: -20px; /* Adjusted from -20px to 0px */
       width: 20px;
       height: 60px;
       background: rgba(51, 51, 51, 0.9);
@@ -350,6 +355,7 @@
       color: white;
       cursor: pointer;
       outline: none;
+      z-index: 1001;
     }
 
     .toggle-button:before {
@@ -495,41 +501,41 @@
     .checkbox-container {
       display: flex;
       align-items: flex-start;
-      gap: 0px; /* Defines a 5-pixel gap between checkbox and label */
-      margin-bottom: 0px; /* Maintains space below the checkbox-container */
-      width: 100%; /* Ensures the container spans the full width */
+      gap: 0px;
+      margin-bottom: 0px;
+      width: 100%;
     }
-    
+
     .checkbox-container input[type="checkbox"] {
       margin-right: 0px;
       width: 10%;
     }
 
     .checkbox-container label {
-      margin-left: 0px; /* Space between the checkbox and the label */
-      white-space: nowrap; /* Prevent the text from wrapping */
-      font-size: 16px; /* Adjust as needed */
+      margin-left: 0px;
+      white-space: nowrap;
+      font-size: 16px;
     }
 
     .configuration-container {
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 5px;            
-      padding: 5px; 
+      gap: 5px;
+      padding: 5px;
     }
 
     .configuration-container form {
       width: 100%;
-      margin-bottom: 0px; /* Removes default bottom margin */
+      margin-bottom: 0px;
     }
 
     .configuration-container form button {
-      margin-top: 0px; /* Adds space above buttons in forms */
+      margin-top: 0px;
     }
 
     .configuration-container label {
-      margin-bottom: 5px; /* Maintains consistent spacing below labels */
+      margin-bottom: 5px;
       cursor: pointer;
       width: 100%;
       text-align: left;
@@ -543,55 +549,55 @@
 
     /* Common styles for all action buttons */
     .action-button {
-      display: flex;                    /* Enables Flexbox */
-      align-items: center;              /* Vertically centers the text */
+      display: flex;
+      align-items: center;
       justify-content: center;
-      background-color: #333;          /* Default background color */
-      color: white;                    /* Text color */
-      border: 1px solid white;         /* Border styling */
-      padding: 0px 20px;              /* Consistent padding */
-      font-size: 12px;                 /* Consistent font size */
-      cursor: pointer;                 /* Pointer cursor on hover */
-      border-radius: 4px;              /* Rounded corners */
-      width: 100%;                     /* Full width of the container */
-      box-sizing: border-box;          /* Include padding and border in total width and height */
-      text-align: center;              /* Center the text */
-      transition: background-color 0.3s ease; /* Smooth transition on hover */
+      background-color: #333;
+      color: white;
+      border: 1px solid white;
+      padding: 0px 20px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+      text-align: center;
+      transition: background-color 0.3s ease;
       line-height: 20px;
-      height: 20px;                    /* Increased height for consistency */
-      overflow: hidden;                /* Hide overflow text */
-      text-overflow: ellipsis;         /* Add ellipsis for overflow text */
-      white-space: nowrap;             /* Prevent text wrapping */
-      margin: 0;                  /* Center buttons if max-width is set */
+      height: 20px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin: 0;
     }
 
     .action-button:hover {
-      background-color: #555;          /* Darker background on hover */
+      background-color: #555;
     }
 
     .action-button:active {
-      background-color: #111;          /* Even darker background when clicked */
+      background-color: #111;
     }
 
     /* Specific button styles */
 
     /* Clear Failed IPs Button - Red background to indicate action */
     .clear-failed-ips {
-      background-color: #ff4d4d;       /* Specific background color */
-      border: none;                     /* Remove border if desired */
+      background-color: #ff4d4d;
+      border: none;
     }
 
     /* View Failed IPs Button - Blue background */
     .view-failed-ips {
-      background-color: #3CCFFF;        /* Specific background color */
+      background-color: #3CCFFF;
     }
 
     /* Save Credentials and Collect Data - Inherit default styles */
     .save-credentials,
     .collect-data {
       /* Inherits styles from .action-button */
-      /* Add any additional styles here if needed */
     }
+
   </style>
   <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
@@ -601,16 +607,14 @@
     <h1>ECLYPSE Hub</h1>
     <h2>ECLYPSE Controller Datalink Visualization</h2>
   </div>
-  
   <div id="loading-screen" aria-live="assertive" role="alert">
     <div class="spinner"></div>
     <div class="loading-text">Loading, please wait...</div>
   </div>
-  
+  <div class="node-tooltip"></div>
   <div id="graph-container">
     <svg></svg>
   </div>
-  
   <div class="right-panel" id="right-panel">
     <div class="right-panel-content">
       <div class="legend-container">
@@ -674,53 +678,38 @@
           </div>
         </div>
         <h3>Configuration</h3>
-        <!-- Configuration Container -->
         <div class="configuration-container">
-          <!-- Auto Zoom Checkbox -->
           <div class="checkbox-container">
             <input type="checkbox" id="autoZoom" name="autoZoom">
             <label for="autoZoom">Auto Zoom</label>
           </div>
-
-          <!-- Save Credentials Form -->
           <form id="credentials-form">
             <label for="username-input">
               <span class="tooltip-text">Enter Username</span>
               Username
             </label>
             <input type="text" id="username-input" name="username-input" required>
-            
             <label for="password-input">
               <span class="tooltip-text">Enter Password</span>
               Password
             </label>
             <input type="password" id="password-input" name="password-input" required>
-            
             <button type="submit" class="action-button save-credentials">Save Credentials</button>
           </form>
-
-          <!-- Collect Data Form -->
           <form id="ip-form">
             <label for="ip-input">
               <span class="tooltip-text">Enter IP Addresses (comma-separated or range)</span>
               IP Addresses
             </label>
             <input type="text" id="ip-input" name="ip-input" required>
-            
             <button type="submit" class="action-button collect-data">Collect Data</button>
           </form>
-
-          <!-- View Failed IPs Button -->
           <button id="view-failed-ips" class="action-button view-failed-ips" aria-label="View Failed IPs">
             View Failed IPs (<span id="failed-ip-count">0</span>)
           </button>
-
-          <!-- Clear Failed IPs Button -->
           <button id="clear-failed-ips" class="action-button clear-failed-ips" aria-label="Clear Failed IPs">
             Clear Failed IPs
           </button>
-
-          <!-- Dropdown Menu -->
           <div class="dropdown-container">
             <select id="view-select" class="dropdown-select">
               <option value="gfx-bacnet">GFX Network Values</option>
@@ -729,27 +718,26 @@
           </div>
         </div>
       </div>
-      <button class="toggle-button" id="toggle-right-panel"></button>
     </div>
-    <div class="side-panel" id="side-panel">
-      <div class="side-panel-content">
-        <h2>Link MetaData</h2>
-        <div id="link-info"></div>
-      </div>
-      <button class="side-panel-toggle" id="toggle-side-panel"></button>
+    <button class="toggle-button" id="toggle-right-panel"></button>
+  </div>
+  <!-- Moved side-panel and modal outside of right-panel -->
+  <div class="side-panel" id="side-panel">
+    <div class="side-panel-content">
+      <h2>Link MetaData</h2>
+      <div id="link-info"></div>
     </div>
-    <div class="node-tooltip"></div>
-    <!-- Failed IPs Modal with ARIA roles -->
-    <div id="failed-ips-modal" class="modal" role="dialog" aria-labelledby="failed-ips-title" aria-modal="true">
-      <div class="modal-content">
-        <span class="close" aria-label="Close">&times;</span>
-        <h2 id="failed-ips-title">Failed IPs</h2>
-        <ul id="modal-failed-ips-list" class="modal-failed-ips-list">
-          <!-- Failed IPs will be dynamically inserted here -->
-        </ul>
-      </div>
+    <button class="side-panel-toggle" id="toggle-side-panel"></button>
+  </div>
+  <div id="failed-ips-modal" class="modal" role="dialog" aria-labelledby="failed-ips-title" aria-modal="true">
+    <div class="modal-content">
+      <span class="close" aria-label="Close">&times;</span>
+      <h2 id="failed-ips-title">Failed IPs</h2>
+      <ul id="modal-failed-ips-list" class="modal-failed-ips-list">
+      </ul>
     </div>
-    <script>
+  </div>
+  <script>
     console.log("Script loaded successfully.");
 
     let globalData;
@@ -762,6 +750,8 @@
     let device_username = "";
     let device_password = "";
     let autoZoomEnabled = true;
+    let nodesArray = [];
+    let nodeMap = new Map();
 
     var width = window.innerWidth,
         height = window.innerHeight - 80;
@@ -917,7 +907,7 @@
       const storedAutoZoomState = localStorage.getItem('autoZoomEnabled');
       if (storedAutoZoomState !== null) {
         autoZoomEnabled = storedAutoZoomState === 'true';
-        document.getElementById('auto-zoom-checkbox').checked = autoZoomEnabled;
+        document.getElementById('autoZoom').checked = autoZoomEnabled;
       } else {
         autoZoomEnabled = true; // Default to true if no stored value
       }
@@ -1100,59 +1090,76 @@
     }
 
     function showTooltip(event, d) {
+      console.log("Tooltip shown for node:", d.id); // Debugging log
       const tooltip = d3.select(".node-tooltip");
       tooltip.transition()
         .duration(200)
-        .style("opacity", .9);
+        .style("opacity", 0.9);
 
       const tooltipContent = generateTooltipContent(d);
+      tooltip.html(tooltipContent);
 
-      tooltip.html(tooltipContent)
-        .style("left", (event.pageX) + "px")
-        .style("top", (event.pageY - 28) + "px");
+      // Get tooltip dimensions
+      const tooltipNode = tooltip.node();
+      const tooltipWidth = tooltipNode.offsetWidth;
+      const tooltipHeight = tooltipNode.offsetHeight;
 
-      // Find all connected nodes using BFS
-      const hoveredNode = d;
-      const connectedNodes = new Set();
-      const queue = [hoveredNode];
+      // Calculate position with boundary checks
+      let left = event.pageX + 10; // Offset by 10px to the right
+      let top = event.pageY + 10; // Offset by 10px below
 
-      while (queue.length > 0) {
-        const node = queue.shift();
-        connectedNodes.add(node);
-
-        simulation.force("link").links().forEach(function(link) {
-          if (link.source === node && !connectedNodes.has(link.target)) {
-            queue.push(link.target);
-          } else if (link.target === node && !connectedNodes.has(link.source)) {
-            queue.push(link.source);
-          }
-        });
+      // Adjust if tooltip goes beyond window boundaries
+      if (left + tooltipWidth > window.innerWidth) {
+        left = window.innerWidth - tooltipWidth - 10; // 10px padding
+      }
+      if (top + tooltipHeight > window.innerHeight) {
+        top = window.innerHeight - tooltipHeight - 10; // 10px padding
       }
 
-      d3.selectAll(".node")
-        .classed("node-faded", function(d) {
-          return !connectedNodes.has(d);
-        });
+      tooltip.style("left", left + "px")
+        .style("top", top + "px");
     }
 
     function hideTooltip() {
+      console.log("Tooltip hidden."); // Debugging log
       const tooltip = d3.select(".node-tooltip");
       tooltip.transition()
         .duration(500)
         .style("opacity", 0);
-
-      // Remove the node-faded class from all nodes
-      d3.selectAll(".node")
-        .classed("node-faded", false);
     }
 
+    function updateTooltipPosition(event) {
+      console.log("Tooltip position updated."); // Debugging log
+      const tooltip = d3.select(".node-tooltip");
+
+      // Get tooltip dimensions
+      const tooltipNode = tooltip.node();
+      const tooltipWidth = tooltipNode.offsetWidth;
+      const tooltipHeight = tooltipNode.offsetHeight;
+
+      // Calculate position with boundary checks
+      let left = event.pageX + 10; // Offset by 10px to the right
+      let top = event.pageY + 10; // Offset by 10px below
+
+      // Adjust if tooltip goes beyond window boundaries
+      if (left + tooltipWidth > window.innerWidth) {
+        left = window.innerWidth - tooltipWidth - 10; // 10px padding
+      }
+      if (top + tooltipHeight > window.innerHeight) {
+        top = window.innerHeight - tooltipHeight - 10; // 10px padding
+      }
+
+      tooltip.style("left", left + "px")
+        .style("top", top + "px");
+    }
+    
     function resetLinkColors() {
       d3.selectAll(".link-visible").style("stroke", function(d) {
         const targetNode = d.target;
         const sourceNode = d.source;
         const linkData = findLinkData(sourceNode, targetNode);
         const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
-        return value === "Online" || value === "True" ? onlineColor : offlineColor;
+        return value === "Online" || value === "True" || value === "Connected" ? onlineColor : offlineColor;
       });
     }
 
@@ -1419,42 +1426,39 @@
 
     function loadDataAndUpdateGraph(data) {
       try {
-        console.log("Loading data into graph:", data); // Debugging log
-        globalData = data; // Assign the passed data to globalData
+          globalData = data; // Assign the passed data to globalData
+          const viewSelect = document.getElementById("view-select");
+          const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
 
-        const viewSelect = document.getElementById("view-select");
-        const selectedView = localStorage.getItem('selectedView') || viewSelect.value;
+          // Initialize nodes and nodeMap
+          nodeMap = new Map();
+          nodesArray = Object.keys(globalData.Nodes).map(id => {
+              const node = {
+                  id: String(id),
+                  ...globalData.Nodes[id],
+                  x: width / 2, // Set initial x position to the center
+                  y: height / 2, // Set initial y position to the center
+                  vx: 0,
+                  vy: 0
+              };
+              nodeMap.set(node.id, node);
+              return node;
+          });
 
-        viewSelect.value = selectedView;
+          // Depending on the selected view, update the graph
+          if (selectedView === "gfx-bacnet") {
+              updateNetworkValuesGraph(globalData.Links["Network Values"], nodesArray, nodeMap);
+          } else if (selectedView === "all-bacnet") {
+              updateRemoteObjectsGraph(globalData.Links.Objects, nodesArray, nodeMap);
+          }
 
-        const nodeMap = new Map();
-        const nodesArray = Object.keys(globalData.Nodes).map(id => {
-          const node = {
-            id: String(id),
-            ...globalData.Nodes[id],
-            x: width / 2, // Set initial x position to the center
-            y: height / 2, // Set initial y position to the center
-            vx: 0,
-            vy: 0
-          };
-          nodeMap.set(node.id, node);
-          return node;
-        });
+          // Apply stored checkbox states after the graph is loaded
+          applyStoredCheckboxStates();
 
-        if (selectedView === "gfx-bacnet") {
-          updateNetworkValuesGraph(globalData.Links["Network Values"], nodesArray, nodeMap);
-        } else if (selectedView === "all-bacnet") {
-          updateRemoteObjectsGraph(globalData.Links.Objects, nodesArray, nodeMap);
-        }
-
-        // Apply stored checkbox states after the graph is loaded
-        applyStoredCheckboxStates();
-        
-        console.log("Graph loaded and updated."); // Debugging log
       } catch (error) {
-        console.error("Error in loadDataAndUpdateGraph:", error);
+          console.error("Error in loadDataAndUpdateGraph:", error);
       }
-    }
+  }
     
     function extractLinks(linksData, nodeMap) {
       const links = [];
@@ -1495,7 +1499,7 @@
         .style("stroke", d => {
           const linkData = findLinkData(d.source, d.target);
           const value = linkData ? linkData["Connection-Status"] || linkData["Enabled"] : undefined;
-          return value === "Online" || value === "True" ? onlineColor : offlineColor;
+          return value === "Online" || value === "True" || value === "Connected" ? onlineColor : offlineColor;
         })
         .style("stroke-width", 3)
         .style("opacity", 0) // Set initial opacity to 0
@@ -1630,41 +1634,36 @@
         .on("mouseout", handleNodeMouseOut)
         .on("click", function(event, d) {
           handleNodeClick(event, d, links);
-        });
+        })
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended)
+        );
 
+      // Append Circle to Each Node
       nodeGroup.append("circle")
         .attr("r", d => calculateNodeSize(d))
         .attr("fill", d => {
-          if (d["node-type"] === "bacnet_local") return "#3CCFFF";
-          if (d["node-type"] === "bacnet_remote") return "#3C8DFF";
-          if (d["node-type"] === "modbus_remote") return "#FF6F3C";
-          if (d["node-type"] === "iot_remote") return "#A3FF3C";
-          if (d["node-type"] === "mqtt_remote") return "#3CFFB5";
-          if (d["node-type"] === "weather_remote") return "#3250a8";
-          if (d["node-type"] === "email_remote") return "#FF3C7E";
-          if (d["node-type"] === "ntp_remote") return "#FFD23C";
-          if (d["node-type"] === "internet_remote") return "#FF7F50";
-          if (d["node-type"] === "bbmd_primary") return "#C39BFF";
-          if (d["node-type"] === "rmt_remote") return "#40E0D0";
-          // Add more conditions for other node types
-          return "white"; // Default color for unknown node types
+          switch (d["node-type"]) {
+            case "bacnet_local": return "#3CCFFF";
+            case "bacnet_remote": return "#3C8DFF";
+            case "modbus_remote": return "#FF6F3C";
+            case "iot_remote": return "#A3FF3C";
+            case "mqtt_remote": return "#3CFFB5";
+            case "weather_remote": return "#3250a8";
+            case "email_remote": return "#FF3C7E";
+            case "ntp_remote": return "#FFD23C";
+            case "internet_remote": return "#FF7F50";
+            case "bbmd_primary": return "#C39BFF";
+            case "rmt_remote": return "#40E0D0";
+            case "bacnetsc_primary": return "#D4D5E5";
+            default: return "white"; // Default color for unknown node types
+          }
         })
-        .style("opacity", 1) // Ensure initial opacity is set to 1
-        .on("mouseover", showTooltip)
-        .on("mouseout", hideTooltip);
+        .style("opacity", 1); // Ensure initial opacity is set to 1
 
-      nodeGroup.on("mouseout", (event, d) => {
-        if (nodesSettled && !d.dragging) {
-          handleNodeMouseOut(event, d);
-        }
-      });
-
-      nodeGroup.call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended)
-      );
-
+      // Append Image to Each Node
       const imageGroup = nodeGroup.append("g")
         .attr("transform", d => `translate(0, ${-calculateNodeSize(d) * 0.4})`);
 
@@ -1675,12 +1674,13 @@
         .attr("x", d => -calculateNodeSize(d) * 0.5)
         .attr("y", d => -calculateNodeSize(d) * 0.4);
 
+      // Append Text to Each Node
       const textGroup = nodeGroup.append("g")
         .attr("transform", d => `translate(0, ${calculateNodeSize(d) * 0.5})`);
 
       textGroup.append("text")
         .attr("text-anchor", "middle")
-        .style("font-size", d => Math.min(calculateNodeSize(d, links) * 0.4, 22) + "px")
+        .style("font-size", d => Math.min(calculateNodeSize(d) * 0.4, 22) + "px")
         .style("font-weight", "900") // Use a numeric value for font-weight
         .text(d => {
           if (d["node-type"] === "rmt_remote") {
@@ -1694,6 +1694,7 @@
     }
 
     function createModbusNodes(modbusNodes, nodes, nodeMap, links) {
+      // Add Modbus Remote Nodes if Not Already Present
       Object.keys(modbusNodes).forEach(id => {
         if (modbusNodes[id]["node-type"] === "modbus_remote" && !nodeMap.has(id)) {
           const node = {
@@ -1720,28 +1721,23 @@
         .on("mouseout", handleNodeMouseOut)
         .on("click", function(event, d) {
           handleNodeClick(event, d, links);
-        });
+        })
+        .on("click", function(event, d) {
+          handleNodeClick(event, d, links);
+        })
+        .call(d3.drag()
+          .on("start", dragstarted)
+          .on("drag", dragged)
+          .on("end", dragended)
+        );
 
+      // Append Circle to Each Modbus Node
       nodeGroup.append("circle")
         .attr("r", d => calculateNodeSize(d))
-        .attr("fill", "orange")
-        .style("opacity", 1) // Ensure initial opacity is set to 1
-        .on("mouseover", showTooltip)
-        .on("mouseout", hideTooltip);
+        .attr("fill", "orange") // Fixed color for Modbus nodes
+        .style("opacity", 1); // Ensure initial opacity is set to 1
 
-      nodeGroup.on("mouseout", (event, d) => {
-        if (nodesSettled && !d.dragging) {
-          handleNodeMouseOut(event, d);
-        }
-      });
-
-      nodeGroup.call(d3.drag()
-        .on("start", dragstarted)
-        .on("drag", dragged)
-        .on("end", dragended)
-      );
-
-
+      // Append Image to Each Modbus Node
       const imageGroup = nodeGroup.append("g")
         .attr("transform", d => `translate(0, ${-calculateNodeSize(d) * 0.4})`);
 
@@ -1752,12 +1748,13 @@
         .attr("x", d => -calculateNodeSize(d) * 0.4)
         .attr("y", d => -calculateNodeSize(d) * 0.4);
 
+      // Append Text to Each Modbus Node
       const textGroup = nodeGroup.append("g")
         .attr("transform", d => `translate(0, ${calculateNodeSize(d) * 0.5})`);
 
       textGroup.append("text")
         .attr("text-anchor", "middle")
-        .style("font-size", d => Math.min(calculateNodeSize(d, links) * 0.4, 22) + "px")
+        .style("font-size", d => Math.min(calculateNodeSize(d) * 0.4, 22) + "px")
         .style("font-weight", "900") // Use a numeric value for font-weight
         .text(d => d["object-name"] || d["local-name"] || d.id);
 
@@ -1768,7 +1765,7 @@
       contentGroup.selectAll("*").remove();
       d3.select("#link-info").html("");
 
-      links = extractLinks(networkValues, nodeMap);
+      const links = extractLinks(networkValues, nodeMap);
 
       createLinks(links, nodes);
       simulation.force("link").links(links);
@@ -1912,6 +1909,7 @@
         "time_server": "static/images/time_server.png",
         "rmt_tunnel": "static/images/rmt_tunnel.png",
         "Niagara4 Station": "static/images/niagara_station.png",
+        "bacnetsc_primary": "static/images/bacnetsc_primary.png",
         // Add more model mappings as needed
       };
 
@@ -2006,7 +2004,7 @@
         .classed('node-hidden', !visible);
 
       // Define BACnet-related node types
-      const bacnetNodeTypes = ['bacnet_remote', 'bacnet_local'];
+      const bacnetNodeTypes = ['bacnet_remote', 'bacnet_local', 'bacnetsc_primary', 'bbmd_primary', 'bbmd_secondary'];
 
       // Hide or show links based on the nodeType and visibility
       d3.selectAll('.link-visible, .link-hover') // Select both link-visible and link-hover
@@ -2147,7 +2145,6 @@
     checkboxIds.forEach(id => {
       document.getElementById(id).addEventListener('change', function() {
         const nodeTypeMap = {
-          'bacnet-checkbox': 'bacnet_remote',
           'modbus-checkbox': 'modbus_remote',
           'iot-checkbox': 'iot_remote',
           'mqtt-checkbox': 'mqtt_remote',
@@ -2158,10 +2155,18 @@
           'bbmd-checkbox': 'bbmd_primary',
           'tunnel-checkbox': 'rmt_remote'
         };
-        const nodeType = nodeTypeMap[id];
-        const checked = this.checked;
-        toggleNodesAndLinks(nodeType, checked);
-        
+
+        // Check for bacnet-checkbox and handle both bacnet_remote and bacnetsc_primary
+        if (id === 'bacnet-checkbox') {
+          const checked = this.checked;
+          toggleNodesAndLinks('bacnet_remote', checked);
+          toggleNodesAndLinks('bacnetsc_primary', checked);
+        } else {
+          const nodeType = nodeTypeMap[id];
+          const checked = this.checked;
+          toggleNodesAndLinks(nodeType, checked);
+        }
+
         // After toggling, re-apply zoom to fit visible nodes
         zoomFit();
       });
@@ -2198,7 +2203,7 @@
       zoomFit();
     });
 
-    document.getElementById('auto-zoom-checkbox').addEventListener('change', function() {
+    document.getElementById('autoZoom').addEventListener('change', function() {
       autoZoomEnabled = this.checked;
       localStorage.setItem('autoZoomEnabled', autoZoomEnabled); // Optional: store in localStorage
 
@@ -2207,6 +2212,26 @@
       }
     });
 
+    document.getElementById("view-select").addEventListener("change", function () {
+    const selectedView = this.value;
+    localStorage.setItem('selectedView', selectedView); // Store selection in local storage
+
+    if (selectedView === "gfx-bacnet") {
+        // Clear the existing graph
+        contentGroup.selectAll("*").remove();
+        d3.select("#link-info").html("");
+
+        // Redraw the graph using "Network Values"
+        updateNetworkValuesGraph(globalData.Links["Network Values"], nodesArray, nodeMap);
+    } else if (selectedView === "all-bacnet") {
+        // Clear the existing graph
+        contentGroup.selectAll("*").remove();
+        d3.select("#link-info").html("");
+
+        // Redraw the graph using "All Connections"
+        updateRemoteObjectsGraph(globalData.Links.Objects, nodesArray, nodeMap);
+    }
+});
   </script>
 </body>
 </html>

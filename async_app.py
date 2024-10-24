@@ -8,6 +8,8 @@ import threading
 
 from aiohttp import ClientTimeout
 from flask import Flask, jsonify, render_template, send_from_directory, request
+from typing import Dict, Any, Set
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
@@ -23,7 +25,22 @@ device_ip_addresses = set()  # Active IPs as a set
 failed_ip_addresses = set()  # Failed IPs as a set
 
 requests.packages.urllib3.disable_warnings(requests.packages.urllib3.exceptions.InsecureRequestWarning)
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+
+def parse_uri(uri: str) -> Dict[str, Any]:
+    """
+    Parses a WebSocket URI to extract IP and port.
+
+    Args:
+        uri (str): The WebSocket URI (e.g., "wss://167.235.201.6:1443/hub")
+
+    Returns:
+        Dict[str, Any]: A dictionary with 'ip' and 'port' keys.
+     """
+    parsed = urlparse(uri)
+    ip = parsed.hostname
+    port = parsed.port
+    return {"ip": ip, "port": port} if ip and port else {"ip": None, "port": None}
 
 def merge_non_null(original_dict, new_dict, parent_key=''):
     """
@@ -94,7 +111,7 @@ async def fetch_device_data(session, ip, device_username, device_password):
             },
             {
                 "id": "Remote BACnet Data",
-                "url": "/api/rest/v2/services/bacnet/remote/devices?$select=*($select=objects($select=*($select=*($select=object-name)))&$select=local-name&$select=model-name&$select=description&$select=location&$select=connection-status)"
+                "url": "/api/rest/v2/services/bacnet/remote/devices?$select=*($select=vendor-name&$select=address&$select=objects($select=*($select=*($select=object-name)))&$select=local-name&$select=model-name&$select=description&$select=location&$select=connection-status)"
             },
             {
                 "id": "Remote Modbus Data",
@@ -145,6 +162,11 @@ async def fetch_device_data(session, ip, device_username, device_password):
                 "id": "Scheduled Tasks",
                 "method": "GET",
                 "url": "/api/rest/v2/services/events/tasks?$select=*($select=recipients($select=*($select=last-result))&$select=key)"
+            },
+                        {
+                "id": "BACNet/SC",
+                "method": "GET",
+                "url": "/api/rest/v2/services/bacnet/communication/network/ports/secure-connect?$select=enabled&$select=network-number&$select=hub-function&$select=hub-connector&$select=description&$select=node-switch"
             }
         ]
     }
@@ -753,6 +775,131 @@ def create_links(data):
                         links["Objects"][device_id][bbmd_node_name]["Enabled"] = str(bbmd_data.get("secondary", {}).get("enabled", {})).title()
                         logging.debug(f"Linked Secondary BBMD Connection: {bbmd_node_name} to device_id: {device_id}")
 
+            # Initialize BACNetSC if not already present
+       
+        if "BACNet/SC" in content:
+            local_device_id = next(iter(current_ip_device_ids))  # Assuming one local device per IP
+            nodes.setdefault(local_device_id, {}).setdefault("BACNetSC", {})
+            bacnet_sc_data = content.get("BACNet/SC", {})
+
+            # BACNet/SC Enabled Status
+            bacnet_sc_enabled = bacnet_sc_data.get("enabled", False)
+            nodes[local_device_id]["BACNetSC"]["enabled"] = bacnet_sc_enabled
+
+            if not bacnet_sc_enabled:
+                logging.debug(f"BACNet/SC disabled for device {local_device_id}, skipping further processing.")
+                continue  # BACNet/SC is disabled; skip further processing
+
+            # Assign Network Number and Description
+            network_number = bacnet_sc_data.get("network-number")
+            network_description = bacnet_sc_data.get("description")
+            nodes[local_device_id]["BACNetSC"]["network_number"] = network_number
+            nodes[local_device_id]["BACNetSC"]["network_description"] = network_description
+
+            # ----------------------------
+            # Process Hub Connector
+            # ----------------------------
+            hub_connector = bacnet_sc_data.get("hub-connector", {})
+            hub_connector_enabled = hub_connector.get("enabled", False)
+            nodes[local_device_id]["BACNetSC"].setdefault("hub-connector", {})["enabled"] = hub_connector_enabled
+
+            if hub_connector_enabled:
+                # Assign Hub Connector State
+                hub_connector_state = hub_connector.get("state", "")
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["state"] = hub_connector_state
+
+                # Parse and Assign Primary Hub
+                primary_uri = hub_connector.get("primary-uri", "")
+                primary_hub = parse_uri(primary_uri) if primary_uri else {"ip": None, "port": None}
+                primary_hub["state"] = hub_connector.get("primary-state", "")
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["primary_hub"] = primary_hub
+
+                # Parse and Assign Failover Hub
+                failover_uri = hub_connector.get("failover-uri", "")
+                failover_hub = parse_uri(failover_uri) if failover_uri else {"ip": None, "port": None}
+                failover_hub["state"] = hub_connector.get("failover-state", "")
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["failover_hub"] = failover_hub
+            else:
+                # If hub_connector is not enabled, assign default values
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["state"] = ""
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["primary_hub"] = {"ip": None, "port": None, "state": ""}
+                nodes[local_device_id]["BACNetSC"]["hub-connector"]["failover_hub"] = {"ip": None, "port": None, "state": ""}
+
+            # ----------------------------
+            # Process Node Switch
+            # ----------------------------
+            node_switch = bacnet_sc_data.get("node-switch", {})
+            node_switch_accept_enabled = node_switch.get("accept-enabled", False)
+            
+            # Ensure BACNetSC and node-switch keys are present before accessing them
+            nodes.setdefault(local_device_id, {}).setdefault("BACNetSC", {}).setdefault("node-switch", {})["accept_enabled"] = node_switch_accept_enabled
+
+            if node_switch_accept_enabled:
+            # Assign Node Switch State
+                node_switch_state = node_switch.get("state", "")
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["state"] = node_switch_state
+
+                # Ensure "outgoing" key exists before updating it
+                nodes[local_device_id]["BACNetSC"]["node-switch"].setdefault("outgoing", {})
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["enabled"] = node_switch.get("initiate-enabled", False)
+
+                if nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["enabled"]:
+                    # Parse and Assign Outgoing Connectors
+                    connectors = node_switch.get("connectors", {})
+                    processed_connectors = {}
+                    for key, connector in connectors.items():
+                        connector_ip_port = parse_uri(connector.get("uri", ""))
+                        connector_state = connector.get("state", "")
+                        connector_connection_state = connector.get("connection-state", "")
+                        processed_connectors[key] = {
+                            "ip": connector_ip_port.get("ip"),
+                            "port": connector_ip_port.get("port"),
+                            "state": connector_state,
+                            "connection_state": connector_connection_state
+                        }
+                    nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["connections"] = processed_connectors
+                else:
+                    # If outgoing is not enabled, assign default values
+                    nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["connections"] = {}
+
+                # Process Incoming Connections
+                incoming_enabled = node_switch_accept_enabled
+                nodes[local_device_id]["BACNetSC"]["node-switch"].setdefault("incoming", {})["enabled"] = incoming_enabled
+
+                if incoming_enabled:
+                    # Parse and Assign Incoming Connections
+                    connections = node_switch.get("connections", {})
+                    processed_node_connections = {}
+                    for key, conn in connections.items():
+                        conn_ip_port = parse_uri(conn.get("uri", ""))
+                        conn_state = conn.get("state", "")
+                        conn_connection_state = conn.get("connection-state", "")
+                        processed_node_connections[key] = {
+                            "ip": conn_ip_port.get("ip"),
+                            "port": conn_ip_port.get("port"),
+                            "state": conn_state,
+                            "connection_state": conn_connection_state
+                        }
+                    nodes[local_device_id]["BACNetSC"]["node-switch"]["incoming"]["connections"] = processed_node_connections
+                else:
+                    # If incoming is not enabled, assign default values
+                    nodes[local_device_id]["BACNetSC"]["node-switch"]["incoming"]["connections"] = {}
+
+                # Assign Other Node Switch Attributes
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["initiate_enabled"] = node_switch.get("initiate-enabled", False)
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["endpoint"] = node_switch.get("endpoint", "")
+            else:
+                # If node-switch is not enabled, assign default values
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["state"] = ""
+                nodes[local_device_id]["BACNetSC"]["node-switch"].setdefault("outgoing", {})
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["enabled"] = False
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["outgoing"]["connections"] = {}
+                nodes[local_device_id]["BACNetSC"]["node-switch"].setdefault("incoming", {})
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["incoming"]["enabled"] = False
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["incoming"]["connections"] = {}
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["initiate_enabled"] = False
+                nodes[local_device_id]["BACNetSC"]["node-switch"]["endpoint"] = ""
+
         # Calculate cumulative counts
         for local_device_id, devices in links["Network Values"].items():
             total_count = sum(
@@ -769,6 +916,104 @@ def create_links(data):
     logging.debug("Finished creating links and nodes.")
     return data
 
+def process_bacnet_sc_links(nodes, links):
+    for device_id, device_data in list(nodes.items()):  # Iterate over a copy of the nodes
+        bacnet_sc = device_data.get("BACNetSC")
+        if bacnet_sc:
+            # Check primary hub for IP
+            primary_ip = bacnet_sc.get("hub-connector", {}).get("primary_hub", {}).get("ip")
+            primary_state = bacnet_sc.get("hub-connector", {}).get("primary_hub", {}).get("state")
+            if primary_ip:
+                existing_node = find_node_by_ip(nodes, primary_ip)
+                if existing_node:
+                    # Create the link to the existing node (Primary Hub)
+                    create_link_to_existing_node(device_id, primary_ip, "Primary Hub", links, primary_state)
+                else:
+                    # Create a new node and link to it
+                    create_node_for_ip(primary_ip, "bacnetsc_primary", "Primary Hub", nodes)
+                    create_link_to_existing_node(device_id, primary_ip, "Primary Hub", links, primary_state)
+
+            # Check failover hub for IP
+            failover_ip = bacnet_sc.get("hub-connector", {}).get("failover_hub", {}).get("ip")
+            failover_state = bacnet_sc.get("hub-connector", {}).get("failover_hub", {}).get("state")
+            if failover_ip:
+                existing_node = find_node_by_ip(nodes, failover_ip)
+                if existing_node:
+                    create_link_to_existing_node(device_id, failover_ip, "Failover Hub", nodes, links, failover_state)
+                else:
+                    create_node_for_ip(failover_ip, "bacnetsc_failover", "Failover Hub", nodes)
+
+            # Check outgoing connections for IPs
+            outgoing_connections = bacnet_sc.get("node-switch", {}).get("outgoing", {}).get("connections", {})
+            for conn_name, conn_data in outgoing_connections.items():
+                outgoing_ip = conn_data.get("ip")
+                outgoing_state = conn_data.get("connection_state")
+                if outgoing_ip:
+                    existing_node = find_node_by_ip(nodes, outgoing_ip)
+                    if existing_node:
+                        create_link_to_existing_node(device_id, outgoing_ip, "Outgoing Connection", nodes, links, outgoing_state)
+                    else:
+                        create_node_for_ip(outgoing_ip, "bacnetsc_direct", "Outgoing Connection", nodes, links)
+                       
+def find_node_by_ip(nodes, ip_address):
+    for node_id, node_data in nodes.items():
+        if node_data.get("ip-address") == ip_address:
+            return node_id
+    return None
+                  
+def create_node_for_ip(ip_address, node_type, description, nodes):
+    """
+    Creates a new node for the given IP address if it doesn't already exist.
+    The IP address will be used as the node ID.
+    """
+    if ip_address in nodes:
+        # If the node for this IP address already exists, return its ID (the IP address itself)
+        return ip_address
+
+    # If the node doesn't exist, create a new node with the IP address as the key
+    new_device_id = ip_address  # Use the IP address as the unique ID
+    nodes[new_device_id] = {
+        "ip-address": ip_address,
+        "model-name": node_type,
+        "node-type": node_type,
+        "description": description,
+        "BACNetSC": {
+            "enabled": True
+        }
+    }
+
+    return new_device_id
+
+def create_link(source_id, target_id, connection_name, nodes):
+    """
+    Create a link between two nodes if it doesn't exist already.
+    """
+    if "Links" not in nodes:
+        nodes["Links"] = {}
+    if source_id not in nodes["Links"]:
+        nodes["Links"][source_id] = {}
+    if target_id not in nodes["Links"][source_id]:
+        nodes["Links"][source_id][target_id] = {
+            "Connection-Status": "Pending",
+            "connection_name": connection_name,
+            "node-type": "bacnetsc_connection"
+        }
+
+def create_link_to_existing_node(device_id, existing_node_ip, description, links, state):
+    # Ensure there's an entry for the device in the Links section's Objects
+    if device_id not in links["Objects"]:
+        links["Objects"][device_id] = {}
+
+    # Add the existing node as a link under the device's Objects
+    links["Objects"][device_id][existing_node_ip] = {
+        "Description": description,
+        "node-type": "bacnetsc_primary",
+        "Connection-Status": state
+    }
+
+    # Increment the count of the objects linked to this device
+    links["Objects"][device_id]["count"] = len(links["Objects"][device_id]) - 1  # Exclude the count itself
+       
 def count_object_names(obj):
     count = 0
     if isinstance(obj, dict):
@@ -827,9 +1072,11 @@ async def fetch_all_data(device_ip_addresses, device_username, device_password):
     global failed_ip_addresses
     failed_ip_addresses = set()  # Reset the set at the start of the fetch  
     all_network_values_global["loading"] = True  # Set loading to True
+
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_device_data(session, ip, device_username, device_password) for ip in device_ip_addresses]
         results = await asyncio.gather(*tasks)
+
         all_data = {}
         for result in results:
             if isinstance(result, dict) and "status" in result:
@@ -842,10 +1089,20 @@ async def fetch_all_data(device_ip_addresses, device_username, device_password):
                     logging.warning(f"Removing IP {ip} from active list due to {status}: {message}")
             elif result is not None:
                 all_data.update(result)
+
         keys_to_remove = {"4194303", "4194304"}  
         cleaned_data = {ip: remove_entries(data, keys_to_remove) for ip, data in all_data.items()}
+
+        # Create links based on the cleaned data
         data_with_links = create_links(cleaned_data)
+
+        # Process BACNet/SC links after the create_links function
+        process_bacnet_sc_links(data_with_links["Nodes"], data_with_links["Links"])  # Pass both Nodes and Links
+
+        # Reorganize the data and continue with further data processing
         reorganized_data = reorganize_data(data_with_links)
+
+        # Remove unnecessary sections
         for ip, content in reorganized_data.items():
             if "Local GFX Network Values" in content:
                 del content["Local GFX Network Values"]
@@ -853,15 +1110,23 @@ async def fetch_all_data(device_ip_addresses, device_username, device_password):
                 del content["Remote BACnet Data"]
             if "Remote Modbus Data" in content:
                 del content["Remote Modbus Data"]
+
+        # Clean up entries using substrings
         substrings_to_remove = ["network-policy", "connection-status", "status"]
         for node_id, node_data in reorganized_data["Nodes"].items():
             reorganized_data["Nodes"][node_id] = remove_entries(node_data, set(), substrings_to_remove)
+
+        # Remove any entries matching device IPs
         for ip in list(reorganized_data.keys()):
             if ip in device_ip_addresses:
                 del reorganized_data[ip]
+
+        # Final processing: calculate cumulative counts
         final_data = calculate_cumulative_counts(reorganized_data)
+
+        # Set loading state and return the final data
         final_data["failed_ips"] = list(failed_ip_addresses)
-        final_data["loading"] = False  # Set loading to False     
+        final_data["loading"] = False  # Set loading to False
         return final_data
 
 async def periodic_fetch():
@@ -918,4 +1183,4 @@ if __name__ == '__main__':
     thread = threading.Thread(target=run_periodic_fetch)
     thread.daemon = True
     thread.start()
-    #app.run(debug=False)
+    app.run(debug=False)
